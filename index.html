@@ -170,7 +170,7 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
 
 /* ── MASTER FORM ── */
 .master-form{padding:16px 20px;border-bottom:1px solid var(--gray-100)}
-.master-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:end}
+.master-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:end}
 
 /* ── EDIT INPUT ── */
 .edit-input{padding:5px 8px;border:1px solid var(--gray-200);border-radius:5px;font-size:12px;font-family:inherit;width:80px;text-align:right}
@@ -185,12 +185,16 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
 .model-item:last-child{border-bottom:none}
 .model-item:hover,.model-item.active{background:var(--blue-light);color:var(--blue)}
 .model-item mark{background:#fef08a;border-radius:2px;font-style:normal}
-/* ── 날짜 분리 입력 ── */
-.date-group{display:inline-flex;align-items:center;gap:2px;background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:0 6px;height:32px}
-.date-group:focus-within{border-color:var(--blue)}
-.date-group input{border:none;outline:none;font-size:12px;font-family:inherit;color:var(--gray-800);background:transparent;text-align:center;padding:0}
+/* ── 날짜 분리 입력 (년/월/일 자동이동) ── */
+.date-group{display:inline-flex;align-items:center;gap:2px;background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:0 6px;height:32px;transition:border-color .15s}
+.date-group:focus-within{border-color:var(--blue);box-shadow:0 0 0 2px rgba(0,119,182,.12)}
+.date-group input{border:none;outline:none;font-size:12px;font-family:inherit;color:var(--gray-800);background:transparent;text-align:center;padding:0;transition:background .1s;border-radius:3px}
+.date-group input:focus{background:var(--blue-light);color:var(--blue-dark)}
 .date-group input::placeholder{color:var(--gray-300)}
 .date-group .sep{color:var(--gray-300);font-size:12px;user-select:none}
+.date-group input.dg-y{width:38px}
+.date-group input.dg-m{width:22px}
+.date-group input.dg-d{width:22px}
 
 /* ── LOADING ── */
 #loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.7);z-index:8000;display:none;align-items:center;justify-content:center;font-size:14px;color:var(--gray-600);font-weight:600}
@@ -264,10 +268,43 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
   <div style="min-width:260px"></div>
 </div>
 
-<!-- STATS HIDDEN - stat ids kept for JS compatibility -->
-<div style="display:none">
-  <span id="stat-total-items"></span><span id="stat-total-stock"></span>
-  <span id="stat-danger-count"></span><span id="stat-tx-count"></span>
+<!-- STATS BAR -->
+<div id="stat-bar" style="display:flex;gap:0;background:#fff;border-bottom:1px solid var(--gray-200);padding:0 24px;flex-shrink:0">
+  <div class="stat-cell" style="border-right:1px solid var(--gray-100);padding:8px 20px 8px 0;margin-right:20px">
+    <div style="font-size:11px;font-weight:600;color:var(--gray-500);margin-bottom:2px">전체 품목</div>
+    <div style="display:flex;align-items:baseline;gap:4px">
+      <span id="stat-total-items" style="font-size:22px;font-weight:700;color:var(--gray-800)">0</span>
+      <span style="font-size:11px;color:var(--gray-400)">개</span>
+    </div>
+  </div>
+  <div class="stat-cell" style="border-right:1px solid var(--gray-100);padding:8px 20px;margin-right:20px">
+    <div style="font-size:11px;font-weight:600;color:var(--gray-500);margin-bottom:2px">총 재고</div>
+    <div style="display:flex;align-items:baseline;gap:4px">
+      <span id="stat-total-stock" style="font-size:22px;font-weight:700;color:var(--blue)">0</span>
+      <span style="font-size:11px;color:var(--gray-400)">개</span>
+    </div>
+  </div>
+  <div class="stat-cell" style="border-right:1px solid var(--gray-100);padding:8px 20px;margin-right:20px">
+    <div style="font-size:11px;font-weight:600;color:var(--gray-500);margin-bottom:2px">재고 금액</div>
+    <div style="display:flex;align-items:baseline;gap:4px">
+      <span id="stat-total-cost" style="font-size:22px;font-weight:700;color:var(--green)">-</span>
+      <span style="font-size:11px;color:var(--gray-400)">원</span>
+    </div>
+  </div>
+  <div class="stat-cell" id="stat-danger-cell" style="border-right:1px solid var(--gray-100);padding:8px 20px;margin-right:20px;cursor:pointer" onclick="sidebarNav('stock')" title="재고현황 탭으로 이동">
+    <div style="font-size:11px;font-weight:600;color:var(--gray-500);margin-bottom:2px">안전재고 부족</div>
+    <div style="display:flex;align-items:baseline;gap:4px">
+      <span id="stat-danger-count" style="font-size:22px;font-weight:700;color:var(--gray-300)">0</span>
+      <span style="font-size:11px;color:var(--gray-400)">품목</span>
+    </div>
+  </div>
+  <div class="stat-cell" style="padding:8px 0">
+    <div style="font-size:11px;font-weight:600;color:var(--gray-500);margin-bottom:2px">전체 거래</div>
+    <div style="display:flex;align-items:baseline;gap:4px">
+      <span id="stat-tx-count" style="font-size:22px;font-weight:700;color:var(--gray-700)">0</span>
+      <span style="font-size:11px;color:var(--gray-400)">건</span>
+    </div>
+  </div>
 </div>
 
 <!-- TABS -->
@@ -388,6 +425,12 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
           <input type="text" id="f-memo" placeholder="예: 2026SS-039/인제 또는 인제/2026SS-039">
         </div>
       </div>
+      <div class="form-grid-4b" style="grid-template-columns:1fr 3fr;margin-top:0">
+        <div class="form-group">
+          <label>단가 (원) <span style="font-size:11px;font-weight:400;color:var(--amber)">입고 시만 입력</span></label>
+          <input type="number" id="f-unitprice" min="0" placeholder="0" title="입고 단가 (입력 시 품목마스터 단가 자동 업데이트)">
+        </div>
+      </div>
       <div class="form-actions">
         <button class="btn btn-primary btn-lg" onclick="addRecord()">입출고내역 DATA에 등록</button>
         <button class="btn btn-ghost btn-lg" onclick="clearForm()">입력칸 비우기</button>
@@ -408,9 +451,21 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
           <span id="monthly-quick-label" style="font-size:12px;font-weight:400;color:var(--gray-500);margin-left:8px"></span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span class="date-group"><input type="text" id="mq-from-y" placeholder="YYYY" maxlength="4" style="width:36px"><span class="sep">-</span><input type="text" id="mq-from-m" placeholder="MM" maxlength="2" style="width:22px"><span class="sep">-</span><input type="text" id="mq-from-d" placeholder="DD" maxlength="2" style="width:22px"></span>
+          <span class="date-group" id="dg-mq-from">
+            <input class="dg-y" id="mq-from-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="mq-from-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="mq-from-d" placeholder="DD" maxlength="2">
+          </span>
           <span style="font-size:12px;color:var(--gray-400)">~</span>
-          <span class="date-group"><input type="text" id="mq-to-y" placeholder="YYYY" maxlength="4" style="width:36px"><span class="sep">-</span><input type="text" id="mq-to-m" placeholder="MM" maxlength="2" style="width:22px"><span class="sep">-</span><input type="text" id="mq-to-d" placeholder="DD" maxlength="2" style="width:22px"></span>
+          <span class="date-group" id="dg-mq-to">
+            <input class="dg-y" id="mq-to-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="mq-to-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="mq-to-d" placeholder="DD" maxlength="2">
+          </span>
           <button class="btn btn-primary" onclick="renderMonthlyQuick()" style="padding:6px 14px;font-size:12px;">검색</button>
           <button class="btn btn-ghost" onclick="resetMonthlyQuick()" style="padding:6px 12px;font-size:12px;">이번 달</button>
         </div>
@@ -484,9 +539,21 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:12px;font-weight:600;color:var(--gray-600);white-space:nowrap">기간</label>
-        <span class="date-group"><input type="text" id="hist-date-from-y" placeholder="YYYY" maxlength="4" style="width:36px"><span class="sep">-</span><input type="text" id="hist-date-from-m" placeholder="MM" maxlength="2" style="width:22px"><span class="sep">-</span><input type="text" id="hist-date-from-d" placeholder="DD" maxlength="2" style="width:22px"></span>
+        <span class="date-group">
+            <input class="dg-y" id="hist-date-from-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="hist-date-from-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="hist-date-from-d" placeholder="DD" maxlength="2">
+          </span>
         <span style="font-size:12px;color:var(--gray-400)">~</span>
-        <span class="date-group"><input type="text" id="hist-date-to-y" placeholder="YYYY" maxlength="4" style="width:36px"><span class="sep">-</span><input type="text" id="hist-date-to-m" placeholder="MM" maxlength="2" style="width:22px"><span class="sep">-</span><input type="text" id="hist-date-to-d" placeholder="DD" maxlength="2" style="width:22px"></span>
+        <span class="date-group">
+            <input class="dg-y" id="hist-date-to-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="hist-date-to-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="hist-date-to-d" placeholder="DD" maxlength="2">
+          </span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:12px;font-weight:600;color:var(--gray-600);white-space:nowrap">검색어</label>
@@ -542,20 +609,20 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:12px;font-weight:600;color:var(--gray-600);white-space:nowrap">기간</label>
         <span class="date-group">
-          <input type="text" id="stock-from-y" placeholder="YYYY" maxlength="4" style="width:36px">
-          <span class="sep">-</span>
-          <input type="text" id="stock-from-m" placeholder="MM" maxlength="2" style="width:22px">
-          <span class="sep">-</span>
-          <input type="text" id="stock-from-d" placeholder="DD" maxlength="2" style="width:22px">
-        </span>
+            <input class="dg-y" id="stock-from-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="stock-from-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="stock-from-d" placeholder="DD" maxlength="2">
+          </span>
         <span style="font-size:12px;color:var(--gray-400)">~</span>
         <span class="date-group">
-          <input type="text" id="stock-to-y" placeholder="YYYY" maxlength="4" style="width:36px">
-          <span class="sep">-</span>
-          <input type="text" id="stock-to-m" placeholder="MM" maxlength="2" style="width:22px">
-          <span class="sep">-</span>
-          <input type="text" id="stock-to-d" placeholder="DD" maxlength="2" style="width:22px">
-        </span>
+            <input class="dg-y" id="stock-to-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="stock-to-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="stock-to-d" placeholder="DD" maxlength="2">
+          </span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:12px;font-weight:600;color:var(--gray-600);white-space:nowrap">검색어</label>
@@ -573,20 +640,20 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:12px;font-weight:600;color:var(--gray-600);white-space:nowrap">기간</label>
         <span class="date-group">
-          <input type="text" id="monthly-from-y" placeholder="YYYY" maxlength="4" style="width:36px">
-          <span class="sep">-</span>
-          <input type="text" id="monthly-from-m" placeholder="MM" maxlength="2" style="width:22px">
-          <span class="sep">-</span>
-          <input type="text" id="monthly-from-d" placeholder="DD" maxlength="2" style="width:22px">
-        </span>
+            <input class="dg-y" id="monthly-from-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="monthly-from-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="monthly-from-d" placeholder="DD" maxlength="2">
+          </span>
         <span style="font-size:12px;color:var(--gray-400)">~</span>
         <span class="date-group">
-          <input type="text" id="monthly-to-y" placeholder="YYYY" maxlength="4" style="width:36px">
-          <span class="sep">-</span>
-          <input type="text" id="monthly-to-m" placeholder="MM" maxlength="2" style="width:22px">
-          <span class="sep">-</span>
-          <input type="text" id="monthly-to-d" placeholder="DD" maxlength="2" style="width:22px">
-        </span>
+            <input class="dg-y" id="monthly-to-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="monthly-to-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="monthly-to-d" placeholder="DD" maxlength="2">
+          </span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:12px;font-weight:600;color:var(--gray-600);white-space:nowrap">검색</label>
@@ -650,19 +717,19 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="font-size:12px;font-weight:600;color:var(--gray-600);white-space:nowrap">기간</label>
           <span class="date-group">
-            <input type="text" id="forecast-from-y" placeholder="YYYY" maxlength="4" style="width:36px">
-            <span class="sep">-</span>
-            <input type="text" id="forecast-from-m" placeholder="MM" maxlength="2" style="width:22px">
-            <span class="sep">-</span>
-            <input type="text" id="forecast-from-d" placeholder="DD" maxlength="2" style="width:22px">
+            <input class="dg-y" id="forecast-from-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="forecast-from-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="forecast-from-d" placeholder="DD" maxlength="2">
           </span>
           <span style="font-size:12px;color:var(--gray-400)">~</span>
           <span class="date-group">
-            <input type="text" id="forecast-to-y" placeholder="YYYY" maxlength="4" style="width:36px">
-            <span class="sep">-</span>
-            <input type="text" id="forecast-to-m" placeholder="MM" maxlength="2" style="width:22px">
-            <span class="sep">-</span>
-            <input type="text" id="forecast-to-d" placeholder="DD" maxlength="2" style="width:22px">
+            <input class="dg-y" id="forecast-to-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="forecast-to-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="forecast-to-d" placeholder="DD" maxlength="2">
           </span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -757,6 +824,7 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
         <div class="form-group"><label>모델명 *</label><input type="text" id="m-model" placeholder="예: HAT-124W-M"></div>
         <div class="form-group"><label>제품명</label><input type="text" id="m-cat" placeholder="예: 단말기"></div>
         <div class="form-group"><label>안전수량</label><input type="number" id="m-safe" min="0" placeholder="0"></div>
+        <div class="form-group"><label>단가 (원)</label><input type="number" id="m-unitprice" min="0" placeholder="0" title="입고 평균단가 (재고금액 계산에 사용)"></div>
         <div class="form-group"><label>보관위치</label><input type="text" id="m-location" placeholder="예: 창고"></div>
         <div class="form-group"><label>&nbsp;</label><button class="btn btn-primary" onclick="addMaster()" style="height:36px">품목 추가/수정</button></div>
       </div>
@@ -778,9 +846,9 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
           <th onclick="sortMasterTable('category')" style="width:80px">제품명 ↕</th>
           <th style="width:80px">안전수량</th>
           <th onclick="sortMasterTable('stock')" style="width:75px">현재고 ↕</th>
-          <th style="width:90px">보관위치</th>
-          <th style="width:40px">비고</th>
-          <th style="width:140px">수정</th>
+          <th style="width:90px;color:var(--amber)">단가 (원)</th>
+          <th style="width:100px;color:var(--green)">재고금액</th>
+          <th style="width:60px">비고</th>
         </tr></thead>
         <tbody id="master-tbody"></tbody>
       </table>
@@ -791,8 +859,10 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
   <!-- 생산협조전 -->
   <div id="tab-production" class="tab-content card">
     <div class="card-header" style="justify-content:flex-end">
-      
-      <button class="btn btn-primary" onclick="saveAllProduction()" style="font-size:12px">일괄저장</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-success" onclick="exportProdExcel()" style="font-size:12px">엑셀 다운로드</button>
+        <button class="btn btn-primary" onclick="saveAllProduction()" style="font-size:12px">일괄저장</button>
+      </div>
     </div>
     <!-- 업로드 -->
     <div style="margin:12px 20px 0;padding:14px 18px;background:var(--gray-50);border:1px dashed var(--gray-200);border-radius:8px">
@@ -819,6 +889,7 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
       <div style="display:flex;gap:6px;">
         <button class="btn btn-primary" onclick="applyProdFilter()">검색</button>
         <button class="btn btn-ghost" onclick="resetProdFilter()">초기화</button>
+        <button id="prod-remain-btn" class="btn btn-ghost" onclick="toggleProdRemain()">잔량 있는 것만</button>
       </div>
       <div id="prod-count" style="font-size:12px;color:var(--gray-500);align-self:center"></div>
     </div>
@@ -1063,18 +1134,39 @@ function updateStats() {
   const tot=Object.values(s).reduce((a,b)=>a+(b>0?b:0),0);
   document.getElementById('stat-total-stock').textContent=tot.toLocaleString();
   const d=appData.masters.filter(m=>(s[m.model]||0)<m.safeQty).length;
-  document.getElementById('stat-danger-count').textContent=d;
   document.getElementById('stat-tx-count').textContent=appData.records.length;
 
+  // 재고 금액 계산
+  const costEl = document.getElementById('stat-total-cost');
+  if(costEl) {
+    let totalCost = 0;
+    let hasCost = false;
+    appData.masters.forEach(m => {
+      if(m.unitPrice > 0) {
+        hasCost = true;
+        const qty = Math.max(0, s[m.model]||0);
+        totalCost += qty * m.unitPrice;
+      }
+    });
+    costEl.textContent = hasCost ? totalCost.toLocaleString() : '-';
+  }
+
+  // 안전재고 부족 강조
+  const dangerEl = document.getElementById('stat-danger-count');
+  if(dangerEl) {
+    dangerEl.textContent = d;
+    dangerEl.style.color = d > 0 ? 'var(--red)' : 'var(--gray-300)';
+    const cell = document.getElementById('stat-danger-cell');
+    if(cell) cell.style.background = d > 0 ? 'var(--red-light)' : '';
+  }
+
   // ── 탭 배지 업데이트 ──
-  // 재고현황: 안전수량 미달 모델 수
   const stockBadge = document.getElementById('badge-stock');
   if(stockBadge) {
     const shortage = appData.masters.filter(m => m.safeQty > 0 && (s[m.model]||0) < m.safeQty).length;
     if(shortage > 0) { stockBadge.textContent = shortage; stockBadge.style.display=''; }
     else stockBadge.style.display='none';
   }
-  // 생산협조전: 잔량(수량-확인수량) > 0 인 건수
   const prodBadge = document.getElementById('badge-prod');
   if(prodBadge && appData.production) {
     const pending = appData.production.filter(p => {
@@ -1444,12 +1536,25 @@ window.addRecord = async function() {
     id:appData.nextId++,date,model,
     serial:serialRaw,
     type,qty,
+    unitPrice: (type==='입고'||type==='조정입고') ? (parseInt(document.getElementById('f-unitprice').value)||0) : 0,
     category:document.getElementById('f-category').value,
     partner:document.getElementById('f-partner').value,
     location:document.getElementById('f-location').value,
     writer:document.getElementById('f-writer').value,
     memo:document.getElementById('f-memo').value,
   };
+  // 입고 시 단가가 입력됐으면 마스터 단가 자동 업데이트
+  if((type==='입고'||type==='조정입고') && r.unitPrice > 0) {
+    const mst = appData.masters.find(x=>x.model===model);
+    if(mst) {
+      mst.unitPrice = r.unitPrice;
+      if(window._isFirebase && mst._key) {
+        import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(function(db) {
+          db.update(db.ref(window._fbDb,'masters/'+mst._key), {unitPrice: r.unitPrice});
+        });
+      }
+    }
+  }
   showLoading(true);
   if(window._isFirebase){ await fbAddRecord(r); }
   else { appData.records.unshift(r); saveLocal(); renderAll(); }
@@ -1463,7 +1568,7 @@ window.clearForm = function() {
   ['f-type','f-model'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-model-search').value='';
   document.getElementById('f-model-dropdown').style.display='none';
-  ['f-serial','f-qty','f-category','f-partner','f-location','f-writer','f-memo'].forEach(id=>document.getElementById(id).value='');
+  ['f-serial','f-qty','f-category','f-partner','f-location','f-writer','f-memo','f-unitprice'].forEach(id=>document.getElementById(id).value='');
   const kstNow = new Date(Date.now() + 9*60*60*1000);
   document.getElementById('f-date').value=kstNow.toISOString().slice(0,10);
 };
@@ -1474,7 +1579,6 @@ let activeFilter = {cat:'', model:'', dateFrom:'', dateTo:'', search:''};
 
 window.applyHistFilter = function() {
   activeFilter.cat    = document.getElementById('hist-cat').value;
-  // hist-model-ac(자동완성 input) 우선, 없으면 기존 select 폴백
   var macEl = document.getElementById('hist-model-ac');
   activeFilter.model  = macEl ? macEl.value.trim() : document.getElementById('hist-model').value;
   activeFilter.dateFrom = getDateVal('hist-date-from');
@@ -1762,10 +1866,8 @@ window.resetHistFilter = function() {
   document.getElementById('hist-model').value='';
   var macEl = document.getElementById('hist-model-ac');
   if(macEl) macEl.value='';
-  ['hist-date-from-y','hist-date-from-m','hist-date-from-d',
-   'hist-date-to-y','hist-date-to-m','hist-date-to-d'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
+  setDateVal('hist-date-from', '');
+  setDateVal('hist-date-to', '');
   document.getElementById('hist-search').value='';
   activeFilter={cat:'',model:'',dateFrom:'',dateTo:'',search:''};
   renderHistory();
@@ -1833,9 +1935,8 @@ window.resetStockFilter=function(){
   if(catEl) catEl.value='';
   var srchEl = document.getElementById('stock-search');
   if(srchEl) srchEl.value='';
-  ['stock-from-y','stock-from-m','stock-from-d','stock-to-y','stock-to-m','stock-to-d'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
+  var sf=document.getElementById('stock-from'); if(sf) sf.value='';
+  var st=document.getElementById('stock-to');   if(st) st.value='';
   activeStockFilter={cat:'',search:'',from:'',to:''};
   renderStock();
 };
@@ -1868,6 +1969,153 @@ function xlsStyle(ws, headers) {
   }
   ws['!rows'] = [{hpt:20}]; // 헤더 행 높이
 }
+
+// ── 생산협조전 엑셀 다운로드 ──
+window.exportProdExcel = function() {
+  var srch      = _activeProdFilter.search;
+  var partnerF  = _activeProdFilter.partner;
+  var remainOnly = _activeProdFilter.remainOnly;
+  var list = (appData.production||[]).slice();
+
+  if(srch) list = list.filter(function(r){ return (r.mgmtNo||'').toLowerCase().indexOf(srch)>=0; });
+  if(partnerF) list = list.filter(function(r){ return (r.partner||'').toLowerCase().indexOf(partnerF)>=0; });
+  list = list.map(function(r) {
+    var auto = getAutoConfirmed(r.mgmtNo, r.model);
+    var manualQty = r.outQty||0;
+    var confirmed = manualQty > 0 ? manualQty : auto;
+    return { r:r, confirmed:confirmed, remain:(r.qty||0)-confirmed };
+  });
+  if(remainOnly) list = list.filter(function(x){ return x.remain > 0; });
+
+  var key = _prodSort.key, dir = _prodSort.dir;
+  if(key === 'remain') {
+    list.sort(function(a,b){
+      var ha=a.remain>0?1:0, hb=b.remain>0?1:0;
+      if(ha!==hb) return hb-ha;
+      return String(b.r.mgmtNo||'').localeCompare(String(a.r.mgmtNo||''),'ko');
+    });
+  } else {
+    list.sort(function(a,b){
+      var va=a.r[key]||'', vb=b.r[key]||'';
+      if(typeof va==='number') return (va-vb)*dir;
+      return String(va).localeCompare(String(vb),'ko')*dir;
+    });
+  }
+
+  if(!list.length){ alert('다운로드할 데이터가 없습니다.'); return; }
+
+  var wb = XLSX.utils.book_new();
+  var wsData = [];
+  var merges = [];
+  var rowStyles = []; // 행별 스타일 정보
+  var currentRow = 0;
+
+  // 헤더
+  wsData.push(['관리번호','모델명','규격','납품처','납품기한','수량','확인수량','잔량','비고']);
+  rowStyles.push('header');
+  currentRow++;
+
+  // 그룹별로 묶기
+  var groups = [];
+  var groupMap = {};
+  list.forEach(function(x){
+    var mg = x.r.mgmtNo||'';
+    if(!groupMap[mg]){ groupMap[mg]=[]; groups.push(mg); }
+    groupMap[mg].push(x);
+  });
+
+  groups.forEach(function(mg){
+    var items = groupMap[mg];
+    var rep = items[0].r;
+    var groupTitle = mg + (rep.title ? '  —  ' + rep.title : '') + (rep.date ? '  (' + rep.date + ')' : '');
+    // 그룹 헤더 행
+    wsData.push([groupTitle,'','','','','','','','']);
+    merges.push({ s:{r:currentRow,c:0}, e:{r:currentRow,c:8} });
+    rowStyles.push('group');
+    currentRow++;
+
+    items.forEach(function(x){
+      var r = x.r;
+      wsData.push([
+        r.mgmtNo||'',
+        r.model||'',
+        r.spec||'-',
+        r.partner||'-',
+        r.deadline||'-',
+        r.qty||0,
+        x.confirmed,
+        x.remain,
+        r.note||''
+      ]);
+      rowStyles.push(x.remain > 0 ? 'data-remain' : 'data');
+      currentRow++;
+    });
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!merges'] = merges;
+
+  // 열 너비
+  ws['!cols'] = [
+    {wch:14}, // 관리번호
+    {wch:24}, // 모델명
+    {wch:7},  // 규격
+    {wch:14}, // 납품처
+    {wch:12}, // 납품기한
+    {wch:8},  // 수량
+    {wch:10}, // 확인수량
+    {wch:8},  // 잔량
+    {wch:20}  // 비고
+  ];
+
+  // 행 높이
+  ws['!rows'] = rowStyles.map(function(t){
+    return t === 'header' ? {hpt:22} : t === 'group' ? {hpt:20} : {hpt:18};
+  });
+
+  // 스타일 적용
+  var range = XLSX.utils.decode_range(ws['!ref']||'A1');
+  var S = {
+    header: { fill:{fgColor:{rgb:'1A4F7A'}}, font:{bold:true,color:{rgb:'FFFFFF'},sz:11}, alignment:{horizontal:'center',vertical:'center'}, border:{top:{style:'thin'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}} },
+    group:  { fill:{fgColor:{rgb:'D6EAF8'}}, font:{bold:true,color:{rgb:'154360'},sz:11}, alignment:{horizontal:'left',vertical:'center'}, border:{top:{style:'medium'},bottom:{style:'thin'},left:{style:'medium'},right:{style:'medium'}} },
+    data:   { fill:{fgColor:{rgb:'FFFFFF'}}, font:{color:{rgb:'333333'},sz:10}, alignment:{horizontal:'center',vertical:'center'}, border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}} },
+    dataLeft: { fill:{fgColor:{rgb:'FFFFFF'}}, font:{color:{rgb:'333333'},sz:10}, alignment:{horizontal:'left',vertical:'center'}, border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}} },
+    remainRed:{ fill:{fgColor:{rgb:'FFF0F0'}}, font:{bold:true,color:{rgb:'C0392B'},sz:10}, alignment:{horizontal:'center',vertical:'center'}, border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}} },
+    zeroGray: { fill:{fgColor:{rgb:'F5F5F5'}}, font:{color:{rgb:'999999'},sz:10}, alignment:{horizontal:'center',vertical:'center'}, border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}} },
+    numData:  { fill:{fgColor:{rgb:'FFFFFF'}}, font:{color:{rgb:'333333'},sz:10}, alignment:{horizontal:'right',vertical:'center'}, border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}} }
+  };
+
+  for(var R=0; R<=range.e.r; R++){
+    var rType = rowStyles[R];
+    for(var C=0; C<=range.e.c; C++){
+      var addr = XLSX.utils.encode_cell({r:R, c:C});
+      if(!ws[addr]) ws[addr] = {v:'', t:'s'};
+      if(rType === 'header'){
+        ws[addr].s = S.header;
+      } else if(rType === 'group'){
+        ws[addr].s = S.group;
+      } else {
+        // data 행
+        var isRemainRow = rType === 'data-remain';
+        if(C === 7){ // 잔량 컬럼
+          ws[addr].s = isRemainRow ? S.remainRed : S.zeroGray;
+        } else if(C === 1){ // 모델명 좌정렬
+          ws[addr].s = S.dataLeft;
+        } else if(C === 5 || C === 6){ // 수량, 확인수량 우정렬
+          ws[addr].s = S.numData;
+        } else {
+          ws[addr].s = isRemainRow ? JSON.parse(JSON.stringify(S.data)) : JSON.parse(JSON.stringify(S.zeroGray));
+          ws[addr].s.font = isRemainRow ? {color:{rgb:'333333'},sz:10} : {color:{rgb:'999999'},sz:10};
+          ws[addr].s.alignment = {horizontal:'center',vertical:'center'};
+        }
+      }
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, '생산협조전');
+  var today = new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);
+  XLSX.writeFile(wb, '생산협조전_' + today + '.xlsx');
+};
 
 // ── 입출고내역 엑셀 다운로드 ──
 window.exportHistExcel = function() {
@@ -1905,7 +2153,7 @@ window.exportStockExcel = function() {
     const incomingMap = {};
     (appData.production||[]).forEach(function(p) {
       const auto = getAutoConfirmed(p.mgmtNo, p.model);
-      const confirmed = auto > 0 ? auto : (p.outQty||0);
+      const confirmed = (p.outQty||0) > 0 ? (p.outQty||0) : auto;
       const remain = (p.qty||0) - confirmed;
       if(remain > 0) incomingMap[p.model] = (incomingMap[p.model]||0) + remain;
     });
@@ -2190,10 +2438,8 @@ window.applyOutletFilter=function(){
 };
 window.resetOutletFilter=function(){
   document.getElementById('outlet-search').value='';
-  ['outlet-date-from-y','outlet-date-from-m','outlet-date-from-d',
-   'outlet-date-to-y','outlet-date-to-m','outlet-date-to-d'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
+  var of=document.getElementById('outlet-date-from'); if(of) of.value='';
+  var ot=document.getElementById('outlet-date-to');   if(ot) ot.value='';
   activeOutletFilter={search:'',dateFrom:'',dateTo:''};
   renderOutlet();
 };
@@ -2320,9 +2566,8 @@ window.applyMonthlyFilter=function(){
   renderMonthly();
 };
 window.resetMonthlyFilter=function(){
-  ['monthly-from-y','monthly-from-m','monthly-from-d','monthly-to-y','monthly-to-m','monthly-to-d'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
+  var mf=document.getElementById('monthly-from'); if(mf) mf.value='';
+  var mt=document.getElementById('monthly-to');   if(mt) mt.value='';
   const ms=document.getElementById('monthly-model-search');
   if(ms) ms.value='';
   activeMonthlyFilter={from:'',to:''};
@@ -2423,7 +2668,7 @@ function renderForecast() {
     if(from && p.deadline && p.deadline < from) return;
     if(to   && p.deadline && p.deadline > to)   return;
     const auto = getAutoConfirmed(p.mgmtNo, p.model);
-    const confirmed = auto > 0 ? auto : (p.outQty||0);
+    const confirmed = (p.outQty||0) > 0 ? (p.outQty||0) : auto;
     const remain = (p.qty||0) - confirmed;
     if(remain > 0) {
       const masterModel = appData.masters.find(function(m) {
@@ -2805,22 +3050,23 @@ window.addMaster = async function() {
   const cat=document.getElementById('m-cat').value.trim();
   const safe=parseInt(document.getElementById('m-safe').value)||0;
   const loc=document.getElementById('m-location').value.trim();
+  const unitPrice=parseInt(document.getElementById('m-unitprice').value)||0;
   if(!model){alert('모델명을 입력해주세요.');return;}
   const existing=appData.masters.find(m=>m.model===model);
   showLoading(true);
   if(existing){
-    existing.category=cat; existing.safeQty=safe; existing.location=loc;
+    existing.category=cat; existing.safeQty=safe; existing.location=loc; existing.unitPrice=unitPrice;
     if(window._isFirebase){
       const dbMod=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
-      await dbMod.update(dbMod.ref(window._fbDb,'masters/'+existing._key),{category:cat,safeQty:safe,location:loc});
+      await dbMod.update(dbMod.ref(window._fbDb,'masters/'+existing._key),{category:cat,safeQty:safe,location:loc,unitPrice:unitPrice});
     } else { saveLocal(); renderAll(); }
   } else {
-    const m={model,category:cat,safeQty:safe,location:loc};
+    const m={model,category:cat,safeQty:safe,location:loc,unitPrice:unitPrice};
     if(window._isFirebase){ await fbAddMaster(m); }
     else { appData.masters.push(m); saveLocal(); renderAll(); }
   }
   showLoading(false);
-  ['m-model','m-cat','m-safe','m-location'].forEach(id=>document.getElementById(id).value='');
+  ['m-model','m-cat','m-safe','m-location','m-unitprice'].forEach(id=>document.getElementById(id).value='');
 };
 window.fillMasterForm=function(model){
   const m=appData.masters.find(x=>x.model===model); if(!m) return;
@@ -2828,6 +3074,7 @@ window.fillMasterForm=function(model){
   document.getElementById('m-cat').value=m.category||'';
   document.getElementById('m-safe').value=m.safeQty||0;
   document.getElementById('m-location').value=m.location||'';
+  document.getElementById('m-unitprice').value=m.unitPrice||0;
 };
 window.deleteMaster = async function(key, isFirebase, model) {
   if(!confirm('"'+model+'" 품목을 삭제하시겠습니까?')) return;
@@ -2880,6 +3127,16 @@ window.updateSafeQty=async function(key,isFirebase,model,val){
   } else { saveLocal(); }
   updateStats(); renderSafety(); renderStock();
 };
+window.updateUnitPrice=async function(key,isFirebase,model,val){
+  const unitPrice=parseInt(val)||0;
+  const m=appData.masters.find(x=>x.model===model); if(!m) return;
+  m.unitPrice=unitPrice;
+  if(isFirebase){
+    const dbMod=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    await dbMod.update(dbMod.ref(window._fbDb,'masters/'+key),{unitPrice:unitPrice});
+  } else { saveLocal(); }
+  updateStats();
+};
 function renderMaster() {
   const stock=getStock();
   let rows=appData.masters.map(m=>({...m,stock:stock[m.model]||0}));
@@ -2920,18 +3177,21 @@ function renderMaster() {
       var keyVal = JSON.stringify(m._key || m.model);
       var modelVal = JSON.stringify(m.model);
       var isFirebase = !!m._key;
+      var stockVal = m.stock || 0;
+      var unitP = m.unitPrice || 0;
+      var stockAmt = stockVal * unitP;
       html += '<tr>'
         + '<td class="td-left" style="font-weight:600;padding-left:24px">' + m.model + '</td>'
         + '<td>' + (m.category||'-') + '</td>'
         + '<td><input type="number" class="edit-input" value="' + (m.safeQty||0) + '" min="0"'
           + ' onchange="updateSafeQty(' + keyVal + ',' + isFirebase + ',' + modelVal + ',this.value)"></td>'
-        + '<td class="td-num" style="font-weight:700">' + m.stock.toLocaleString() + '</td>'
-        + '<td>' + (m.location||'-') + '</td>'
-        + '<td></td>'
-        + '<td style="display:flex;gap:4px;">'
-          + '<button class="mod-btn" onclick="fillMasterForm(' + modelVal + ')">모델명 수정</button>'
-          + '<button class="del-btn" onclick="deleteMaster(' + keyVal + ',' + isFirebase + ',' + modelVal + ')">삭제</button>'
+        + '<td class="td-num" style="font-weight:700">' + stockVal.toLocaleString() + '</td>'
+        + '<td class="td-num" style="color:var(--amber)">'
+          + '<input type="number" class="edit-input" value="' + unitP + '" min="0" style="width:90px;text-align:right"'
+          + ' onchange="updateUnitPrice(' + keyVal + ',' + isFirebase + ',' + modelVal + ',this.value)">'
         + '</td>'
+        + '<td class="td-num" style="color:var(--green);font-weight:600">' + (unitP ? stockAmt.toLocaleString() + '원' : '-') + '</td>'
+        + '<td></td>'
         + '</tr>';
     });
   });
@@ -3140,34 +3400,60 @@ window.clearOldLogs = async function() {
 };
 
 // ── 날짜 안전 변환 헬퍼 ──
-// cellDates:false + raw:true 로 읽으면 날짜셀은 엑셀 시리얼 숫자로 옴
-// XLSX.SSF.parse_date_code 로 파싱 → UTC/timezone 영향 전혀 없음
+// ── 엑셀 날짜 파싱 (timezone 하루 밀림 완전 방지) ──
+// cellDates:false 로 읽으면 날짜셀은 숫자(시리얼)로 옴 → XLSX.SSF.parse_date_code 로 처리
+// cellDates:true 혼용 / 이미 문자열인 경우도 안전하게 처리
 function safeDate(val) {
-  if(!val) return '';
-  // Date 객체로 왔을 경우 (cellDates:true 혼용 대비) UTC 메서드로 처리
+  if(!val && val !== 0) return '';
+
+  // ① Date 객체 → 로컬 날짜 메서드로 읽기 (UTC 메서드 사용 금지 → 하루 밀림 원인)
   if(val instanceof Date) {
-    return val.getUTCFullYear() + '-'
-      + String(val.getUTCMonth()+1).padStart(2,'0') + '-'
-      + String(val.getUTCDate()).padStart(2,'0');
+    var y = val.getFullYear();
+    var m = String(val.getMonth()+1).padStart(2,'0');
+    var d = String(val.getDate()).padStart(2,'0');
+    return y + '-' + m + '-' + d;
   }
-  // 숫자(엑셀 시리얼) → parse_date_code 사용
+
+  // ② 숫자(엑셀 시리얼) → XLSX.SSF.parse_date_code 사용 (UTC/로컬 무관)
   if(typeof val === 'number') {
     try {
-      var d = XLSX.SSF.parse_date_code(val);
-      if(d && d.y > 1900) {
-        return d.y + '-' + String(d.m).padStart(2,'0') + '-' + String(d.d).padStart(2,'0');
+      var pd = XLSX.SSF.parse_date_code(val);
+      if(pd && pd.y > 1900) {
+        return pd.y + '-' + String(pd.m).padStart(2,'0') + '-' + String(pd.d).padStart(2,'0');
       }
     } catch(e) {}
-    // fallback: 엑셀 시리얼 직접 계산 (1900년 윤년 버그 보정 포함)
-    var serial = val > 59 ? val - 1 : val;
-    var epoch = new Date(Date.UTC(1900, 0, 1));
-    epoch.setUTCDate(epoch.getUTCDate() + serial - 1);
-    return epoch.getUTCFullYear() + '-'
-      + String(epoch.getUTCMonth()+1).padStart(2,'0') + '-'
-      + String(epoch.getUTCDate()).padStart(2,'0');
+    // fallback: 엑셀 1900 시리얼 직접 계산 (1900년 2월 29일 윤년 버그 보정)
+    var serial = val >= 60 ? val - 1 : val;  // 60=가짜 1900-02-29, 이후는 -1 보정
+    var msPerDay = 86400000;
+    var excelEpoch = Date.UTC(1899, 11, 31); // 1899-12-31 UTC
+    var ms = excelEpoch + serial * msPerDay;
+    var dt = new Date(ms);
+    return dt.getUTCFullYear() + '-'
+      + String(dt.getUTCMonth()+1).padStart(2,'0') + '-'
+      + String(dt.getUTCDate()).padStart(2,'0');
   }
-  // 문자열 그대로
+
+  // ③ 문자열 처리
   var s = String(val).trim();
+  if(!s) return '';
+
+  // "YYYY-MM-DD" 또는 "YYYY/MM/DD" 형태 → 그대로 반환 (파싱 없이)
+  var m1 = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(m1) {
+    return m1[1] + '-' + m1[2].padStart(2,'0') + '-' + m1[3].padStart(2,'0');
+  }
+
+  // ISO 문자열("2026-05-08T15:00:00.000Z") → UTC 메서드로 읽기
+  if(s.includes('T') || s.includes('Z')) {
+    var dt2 = new Date(s);
+    if(!isNaN(dt2)) {
+      // UTC 기준으로 날짜만 추출 (이 형태는 이미 UTC 기준 저장)
+      return dt2.getUTCFullYear() + '-'
+        + String(dt2.getUTCMonth()+1).padStart(2,'0') + '-'
+        + String(dt2.getUTCDate()).padStart(2,'0');
+    }
+  }
+
   return s.length >= 10 ? s.slice(0,10) : s;
 }
 
@@ -3677,7 +3963,7 @@ window.updateProdNote = function(idx, val) {
 
 
 // ── PRODUCTION FILTER STATE ──
-var _activeProdFilter = { search: '', partner: '' };
+var _activeProdFilter = { search: '', partner: '', remainOnly: false };
 
 window.applyProdFilter = function() {
   _activeProdFilter.search  = (document.getElementById('prod-search').value||'').toLowerCase();
@@ -3688,7 +3974,19 @@ window.applyProdFilter = function() {
 window.resetProdFilter = function() {
   document.getElementById('prod-search').value = '';
   document.getElementById('prod-partner-filter').value = '';
-  _activeProdFilter = { search: '', partner: '' };
+  _activeProdFilter = { search: '', partner: '', remainOnly: false };
+  var btn = document.getElementById('prod-remain-btn');
+  if(btn){ btn.className='btn btn-ghost'; btn.textContent='잔량 있는 것만'; }
+  renderProduction();
+};
+
+window.toggleProdRemain = function() {
+  _activeProdFilter.remainOnly = !_activeProdFilter.remainOnly;
+  var btn = document.getElementById('prod-remain-btn');
+  if(btn){
+    if(_activeProdFilter.remainOnly){ btn.className='btn btn-primary'; btn.textContent='✓ 잔량 있는 것만'; }
+    else { btn.className='btn btn-ghost'; btn.textContent='잔량 있는 것만'; }
+  }
   renderProduction();
 };
 
@@ -3697,11 +3995,11 @@ function renderProduction() {
   var cnt = document.getElementById('prod-count');
   if(!tb) return;
 
-  var srch    = _activeProdFilter.search;
-  var partnerF = _activeProdFilter.partner;
+  var srch       = _activeProdFilter.search;
+  var partnerF   = _activeProdFilter.partner;
+  var remainOnly = _activeProdFilter.remainOnly;
   var list = (appData.production||[]).slice();
 
-  // 검색어는 관리번호 기준으로만 필터링
   if(srch) list = list.filter(function(r) {
     return (r.mgmtNo||'').toLowerCase().indexOf(srch) >= 0;
   });
@@ -3709,13 +4007,37 @@ function renderProduction() {
     return (r.partner||'').toLowerCase().indexOf(partnerF) >= 0;
   });
 
+  // 각 행의 잔량을 미리 계산해서 붙이기
+  list = list.map(function(r) {
+    var auto = getAutoConfirmed(r.mgmtNo, r.model);
+    var manualQty = r.outQty || 0;
+    // 수동 입력값(outQty)이 있으면 우선, 없을 때만 자동값 사용
+    var confirmed = manualQty > 0 ? manualQty : auto;
+    var isAuto = manualQty === 0 && auto > 0;
+    return { r: r, remain: (r.qty||0) - confirmed, confirmed: confirmed, isAuto: isAuto };
+  });
+
+  // 잔량 있는 것만 버튼
+  if(remainOnly) list = list.filter(function(x) { return x.remain > 0; });
+
   var key = _prodSort.key;
   var dir = _prodSort.dir;
-  list.sort(function(a, b) {
-    var va = a[key]||'', vb = b[key]||'';
-    if(typeof va === 'number') return (va - vb) * dir;
-    return String(va).localeCompare(String(vb), 'ko') * dir;
-  });
+
+  if(key === 'remain') {
+    // 잔량>0: 관리번호 내림차순 / 잔량=0: 관리번호 내림차순으로 맨 아래
+    list.sort(function(a, b) {
+      var hasA = a.remain > 0 ? 1 : 0;
+      var hasB = b.remain > 0 ? 1 : 0;
+      if(hasA !== hasB) return hasB - hasA; // 잔량있는 것 위로
+      return String(b.r.mgmtNo||'').localeCompare(String(a.r.mgmtNo||''), 'ko');
+    });
+  } else {
+    list.sort(function(a, b) {
+      var va = a.r[key]||'', vb = b.r[key]||'';
+      if(typeof va === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'ko') * dir;
+    });
+  }
 
   if(cnt) cnt.textContent = '전체 ' + list.length + '건';
 
@@ -3726,16 +4048,12 @@ function renderProduction() {
 
   var html = '';
   var lastMgmt = '';
-  list.forEach(function(r) {
+  list.forEach(function(x) {
+    var r = x.r;
     var realIdx = appData.production.indexOf(r);
-
-    // ⑦ 자동 확인수량: 입출고내역 비고에서 관리번호 매칭
-    var autoConfirmed = getAutoConfirmed(r.mgmtNo, r.model);
-    // 자동값이 있으면 우선 사용, 없으면 수동 입력값 사용
-    var displayConfirmed = autoConfirmed > 0 ? autoConfirmed : (r.outQty||0);
-    var isAuto = autoConfirmed > 0;
-
-    var remain = (r.qty||0) - displayConfirmed;
+    var displayConfirmed = x.confirmed;
+    var isAuto = x.isAuto;
+    var remain = x.remain;
     var remainColor = remain > 0 ? 'color:var(--red);font-weight:600' : 'color:var(--gray-400)';
 
     if(r.mgmtNo !== lastMgmt) {
@@ -3747,7 +4065,6 @@ function renderProduction() {
             + '</td></tr>';
     }
 
-    // 확인수량: 자동값이 있으면 자동값으로 input 표시, 없으면 수동 입력값
     var inputId = 'outqty-' + realIdx;
     var outqtyCell = '<td style="padding:3px 6px">'
       + '<input type="number" min="0" value="' + displayConfirmed + '" id="' + inputId + '" '
@@ -3792,17 +4109,15 @@ function initMonthlyQuick() {
 }
 window.resetMonthlyQuick = function() {
   initMonthlyQuick();
+  renderMonthlyQuick();
+};
 
 // 날짜 분리입력 그룹 초기화 - DOMContentLoaded 후 실행
 document.addEventListener('DOMContentLoaded', function() {
   setupDateGroup('hist-date-from', ()=>applyHistFilter());
   setupDateGroup('hist-date-to',   ()=>applyHistFilter());
-  setupDateGroup('outlet-date-from', ()=>applyOutletFilter());
-  setupDateGroup('outlet-date-to',   ()=>applyOutletFilter());
   setupDateGroup('mq-from', ()=>renderMonthlyQuick());
   setupDateGroup('mq-to',   ()=>renderMonthlyQuick());
-  setupMonthGroup('monthly-from', ()=>applyMonthlyFilter());
-  setupMonthGroup('monthly-to',   ()=>applyMonthlyFilter());
   setupDateGroup('stock-from',   ()=>applyStockFilter());
   setupDateGroup('stock-to',     ()=>applyStockFilter());
   setupDateGroup('monthly-from', ()=>applyMonthlyFilter());
@@ -3810,8 +4125,6 @@ document.addEventListener('DOMContentLoaded', function() {
   setupDateGroup('forecast-from', ()=>applyForecastFilter());
   setupDateGroup('forecast-to',   ()=>applyForecastFilter());
 });
-  renderMonthlyQuick();
-};
 window.renderMonthlyQuick = function() {
   const from = getDateVal('mq-from');
   const to   = getDateVal('mq-to');
@@ -3942,84 +4255,141 @@ function renderAll() {
   }
 }
 
-// ── 날짜 분리 입력 자동이동 + 헬퍼 ──
+// ── 날짜 입력 헬퍼 (년/월/일 3칸 자동이동 방식) ──
 function getDateVal(prefix) {
-  // prefix: 'hist-date-from', 'outlet-date-from', 'mq-from' 등
-  const y = (document.getElementById(prefix+'-y')||{}).value||'';
-  const m = (document.getElementById(prefix+'-m')||{}).value||'';
-  const d = (document.getElementById(prefix+'-d')||{}).value||'';
-  if(!y && !m && !d) return '';
-  const yy = y.padStart(4,'0');
-  const mm = m.padStart(2,'0');
-  const dd = d.padStart(2,'0');
-  if(yy.length===4 && mm.length===2 && dd.length===2) return yy+'-'+mm+'-'+dd;
-  return '';
-}
-function setDateVal(prefix, dateStr) {
-  if(!dateStr) return;
-  const parts = dateStr.split('-');
-  if(parts.length!==3) return;
+  // 3칸 방식: prefix-y, prefix-m, prefix-d
   const ey = document.getElementById(prefix+'-y');
   const em = document.getElementById(prefix+'-m');
   const ed = document.getElementById(prefix+'-d');
-  if(ey) ey.value = parts[0];
-  if(em) em.value = parts[1];
-  if(ed) ed.value = parts[2];
+  if(ey && em && ed) {
+    const y = ey.value.trim();
+    const m = em.value.trim();
+    const d = ed.value.trim();
+    if(!y && !m && !d) return '';
+    if(y.length !== 4) return '';
+    const yNum = parseInt(y);
+    const mNum = parseInt(m) || 0;
+    const dNum = parseInt(d) || 0;
+    if(yNum < 1900 || yNum > 2100) return '';
+    const mm = mNum > 0 ? String(mNum).padStart(2,'0') : '01';
+    const dd = dNum > 0 ? String(dNum).padStart(2,'0') : '01';
+    if(mNum > 12 || dNum > 31) return '';
+    return y + '-' + mm + '-' + dd;
+  }
+  // fallback: single date input
+  const el = document.getElementById(prefix);
+  if(el && el.type === 'date') return el.value || '';
+  return '';
+}
+function setDateVal(prefix, dateStr) {
+  const ey = document.getElementById(prefix+'-y');
+  const em = document.getElementById(prefix+'-m');
+  const ed = document.getElementById(prefix+'-d');
+  if(ey && em && ed) {
+    if(!dateStr) { ey.value=''; em.value=''; ed.value=''; return; }
+    const parts = dateStr.split('-');
+    if(parts.length!==3) return;
+    ey.value = parts[0]; em.value = parts[1]; ed.value = parts[2];
+    return;
+  }
+  const el = document.getElementById(prefix);
+  if(el && el.type === 'date') { el.value = dateStr || ''; return; }
 }
 function onlyNumKey(e) {
   if(!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Enter'].includes(e.key)) {
     e.preventDefault();
   }
 }
-// 년월 2칸용 (월별현황)
+// ── 스마트 날짜 그룹 설정 (년→월 자동이동, 월→일 자동이동, 일 입력 완료 시 검색) ──
+function setupDateGroup(prefix, onComplete) {
+  // 3칸 방식 우선
+  const ey = document.getElementById(prefix+'-y');
+  const em = document.getElementById(prefix+'-m');
+  const ed = document.getElementById(prefix+'-d');
+  if(ey && em && ed) {
+    [ey,em,ed].forEach(el => el.addEventListener('keydown', onlyNumKey));
+    // 년: 4자리 입력 시 월로 이동
+    ey.addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g,'').slice(0,4);
+      if(this.value.length===4) { em.focus(); em.select(); }
+    });
+    // 월: 2자리 or 2이상 첫자리 시 일로 이동
+    em.addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g,'').slice(0,2);
+      const v = parseInt(this.value)||0;
+      if(this.value.length===2) {
+        // 범위 보정
+        if(v<1) this.value='01';
+        if(v>12) this.value='12';
+        ed.focus(); ed.select();
+      } else if(this.value.length===1 && v>=2) {
+        this.value='0'+this.value;
+        ed.focus(); ed.select();
+      }
+    });
+    // 일: 2자리 입력 시 자동 검색
+    ed.addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g,'').slice(0,2);
+      const v = parseInt(this.value)||0;
+      if(this.value.length===1 && v>=4) {
+        this.value='0'+this.value;
+      }
+      if(this.value.length===2) {
+        if(v<1) this.value='01';
+        if(v>31) this.value='31';
+        if(onComplete) onComplete();
+      }
+    });
+    // 백스페이스: 빈 상태에서 이전 칸으로
+    em.addEventListener('keydown', function(e) {
+      if(e.key==='Backspace' && this.value==='') { ey.focus(); ey.select(); }
+      if(e.key==='Enter' && onComplete) onComplete();
+    });
+    ed.addEventListener('keydown', function(e) {
+      if(e.key==='Backspace' && this.value==='') { em.focus(); em.select(); }
+      if(e.key==='Enter' && onComplete) onComplete();
+    });
+    ey.addEventListener('keydown', function(e) {
+      if(e.key==='Enter' && onComplete) onComplete();
+    });
+    return;
+  }
+  // fallback: single date input
+  const single = document.getElementById(prefix);
+  if(single && single.type === 'date') {
+    single.addEventListener('change', function() { if(onComplete) onComplete(); });
+    return;
+  }
+}
+// 년월 2칸용 (월별현황) — prefix-y, prefix-m
 function setupMonthGroup(prefix, onComplete) {
   const ey = document.getElementById(prefix+'-y');
   const em = document.getElementById(prefix+'-m');
   if(!ey||!em) return;
   [ey,em].forEach(el=>el.addEventListener('keydown', onlyNumKey));
   ey.addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g,'');
+    this.value = this.value.replace(/\D/g,'').slice(0,4);
     if(this.value.length===4) { em.focus(); em.select(); }
   });
   em.addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g,'');
-    if(this.value.length===2 && onComplete) onComplete();
-    else if(this.value.length===1 && parseInt(this.value)>=2) {
-      this.value='0'+this.value; if(onComplete) onComplete();
+    this.value = this.value.replace(/\D/g,'').slice(0,2);
+    const v = parseInt(this.value)||0;
+    if(this.value.length===2) {
+      if(v<1) this.value='01';
+      if(v>12) this.value='12';
+      if(onComplete) onComplete();
+    } else if(this.value.length===1 && v>=2) {
+      this.value='0'+this.value;
+      if(onComplete) onComplete();
     }
   });
-  [ey,em].forEach(el=>el.addEventListener('keydown', function(e) {
+  em.addEventListener('keydown', function(e) {
+    if(e.key==='Backspace' && this.value==='') { ey.focus(); ey.select(); }
     if(e.key==='Enter' && onComplete) onComplete();
-  }));
-}
-// 년월일 3칸용
-function setupDateGroup(prefix, onComplete) {
-  const ey = document.getElementById(prefix+'-y');
-  const em = document.getElementById(prefix+'-m');
-  const ed = document.getElementById(prefix+'-d');
-  if(!ey||!em||!ed) return;
-  [ey,em,ed].forEach(el=>el.addEventListener('keydown', onlyNumKey));
-  ey.addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g,'');
-    if(this.value.length===4) { em.focus(); em.select(); }
   });
-  em.addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g,'');
-    if(this.value.length===2) { ed.focus(); ed.select(); }
-    else if(this.value.length===1 && parseInt(this.value)>=2) {
-      this.value = '0'+this.value; ed.focus(); ed.select();
-    }
-  });
-  ed.addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g,'');
-    if(this.value.length===1 && parseInt(this.value)>=4) {
-      this.value = '0'+this.value;
-    }
-    if(this.value.length===2 && onComplete) onComplete();
-  });
-  [ey,em,ed].forEach(el=>el.addEventListener('keydown', function(e) {
+  ey.addEventListener('keydown', function(e) {
     if(e.key==='Enter' && onComplete) onComplete();
-  }));
+  });
 }
 // ── INIT ──
 document.getElementById('f-date').value=new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);
