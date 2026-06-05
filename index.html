@@ -213,30 +213,6 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
-<!-- ── PIN 잠금 화면 ── -->
-<div id="pin-lock" style="position:fixed;inset:0;background:linear-gradient(135deg,#1a4f7a 0%,#0d2d4a 100%);z-index:9999;display:flex;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:16px;padding:40px 36px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.4);text-align:center">
-    <div style="font-size:36px;margin-bottom:8px">🏭</div>
-    <div style="font-size:20px;font-weight:700;color:#1a4f7a;margin-bottom:4px">재고관리 시스템</div>
-    <div style="font-size:12px;color:#6b7280;margin-bottom:28px">하이텍앤솔(주)</div>
-
-    <div style="margin-bottom:16px">
-      <input type="password" id="pin-input" maxlength="20"
-        placeholder="비밀번호 입력"
-        onkeydown="if(event.key==='Enter') checkPin()"
-        style="width:100%;padding:12px 16px;border:2px solid #e5e7eb;border-radius:8px;font-size:16px;text-align:center;letter-spacing:3px;outline:none;box-sizing:border-box;transition:border-color .2s"
-        onfocus="this.style.borderColor='#1a4f7a'"
-        onblur="this.style.borderColor='#e5e7eb'">
-    </div>
-    <div id="pin-error" style="height:20px;font-size:12px;color:#ef4444;margin-bottom:12px"></div>
-    <button onclick="checkPin()"
-      style="width:100%;padding:12px;background:#1a4f7a;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s"
-      onmouseover="this.style.background='#154168'"
-      onmouseout="this.style.background='#1a4f7a'">
-      확인
-    </button>
-  </div>
-</div>
 
 <!-- Firebase Setup Overlay -->
 <div id="fb-overlay">
@@ -634,10 +610,11 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
       
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div style="display:flex;background:var(--gray-100);border-radius:8px;padding:3px;gap:2px">
-          <button id="stock-view-btn-current" class="btn btn-primary" style="font-size:12px;padding:5px 14px" onclick="switchStockView('current')">📦 현재고</button>
-          <button id="stock-view-btn-ym" class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="switchStockView('ym')">📊 월별집계</button>
-          <button id="stock-view-btn-forecast" class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="switchStockView('forecast')">🔮 재고전망</button>
-          <button id="stock-view-btn-safety" class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="switchStockView('safety')">🛡 안전재고 산출</button>
+          <button id="stock-view-btn-current" class="btn btn-primary" style="font-size:12px;padding:5px 14px" onclick="switchStockView('current')">현재고</button>
+          <button id="stock-view-btn-ym" class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="switchStockView('ym')">월별집계</button>
+          <button id="stock-view-btn-forecast" class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="switchStockView('forecast')">재고전망</button>
+          <button id="stock-view-btn-safety" class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="switchStockView('safety')">안전재고 산출</button>
+          <button id="stock-view-btn-audit" class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="switchStockView('audit')">재고실사</button>
         </div>
         <button class="btn btn-success" onclick="exportStockExcel()" style="font-size:12px">엑셀 다운로드</button>
       </div>
@@ -836,8 +813,8 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
             style="width:70px;padding:5px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;text-align:center">
           <span style="font-size:12px;color:var(--gray-500)">주</span>
         </div>
-        <button class="btn btn-primary" onclick="calcSafetyStock()" style="font-size:12px">산출하기</button>
-        <button class="btn btn-success" onclick="applySafetyStock()" id="safety-apply-btn" style="font-size:12px;display:none">✅ 안전수량 일괄 반영</button>
+        <button class="btn btn-ghost" onclick="calcSafetyStock()" style="font-size:12px">산출하기</button>
+        <button class="btn btn-ghost" onclick="applySafetyStock()" id="safety-apply-btn" style="font-size:12px;display:none">안전수량 일괄 반영</button>
         <span id="safety-calc-count" style="font-size:12px;color:var(--gray-500)"></span>
       </div>
 
@@ -858,6 +835,69 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
             </tr>
           </thead>
           <tbody id="safety-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 📋 재고실사 뷰 -->
+    <div id="stock-view-audit" style="display:none;padding:16px 20px">
+
+      <!-- 컨트롤 바 -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:12px 16px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-200)">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;font-weight:600;color:var(--gray-700)">실사일자</label>
+          <span class="date-group">
+            <input class="dg-y" id="audit-date-y" placeholder="YYYY" maxlength="4">
+            <span class="sep">/</span>
+            <input class="dg-m" id="audit-date-m" placeholder="MM" maxlength="2">
+            <span class="sep">/</span>
+            <input class="dg-d" id="audit-date-d" placeholder="DD" maxlength="2">
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="text" id="audit-search" placeholder="모델명 검색"
+            style="padding:5px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;width:160px"
+            oninput="renderAudit()">
+        </div>
+        <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="auditFillFromStock()" style="font-size:12px">장부수량으로 채우기</button>
+          <button class="btn btn-ghost" onclick="auditClearAll()" style="font-size:12px">전체 초기화</button>
+          <button onclick="saveAuditDraft()" style="font-size:12px;padding:6px 14px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:6px;font-weight:600;cursor:pointer">임시저장</button>
+          <button onclick="confirmAudit()" class="btn btn-ghost" style="font-size:12px;font-weight:600">실사 확정</button>
+        </div>
+      </div>
+
+      <!-- 임시저장 상태 표시 -->
+      <div id="audit-draft-bar" style="display:none;padding:8px 16px;border-radius:8px;margin-bottom:8px;font-size:12px;background:#EFF8FF;border:1px solid #BFDBFE;display:flex;align-items:center;gap:10px">
+        <span style="color:var(--blue)">💾 임시저장된 데이터가 있습니다.</span>
+        <span id="audit-draft-time" style="color:var(--gray-500)"></span>
+        <button onclick="loadAuditDraft()" style="padding:3px 10px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">불러오기</button>
+        <button onclick="clearAuditDraft()" style="padding:3px 10px;background:#fff;color:var(--red);border:1px solid #fca5a5;border-radius:4px;font-size:11px;cursor:pointer">삭제</button>
+      </div>
+
+      <!-- 요약 바 -->
+      <div id="audit-summary" style="padding:10px 16px;border-radius:8px;margin-bottom:12px;font-size:12px;display:flex;gap:20px;flex-wrap:wrap;background:#F0FDF4;border:1px solid #BBF7D0">
+        <span>전체 <strong id="audit-cnt-total">0</strong>개 모델</span>
+        <span style="color:var(--red)">부족(+조정) <strong id="audit-cnt-plus">0</strong>개</span>
+        <span style="color:var(--blue)">초과(-조정) <strong id="audit-cnt-minus">0</strong>개</span>
+        <span style="color:var(--green)">일치 <strong id="audit-cnt-match">0</strong>개</span>
+        <span style="color:var(--gray-400)">미입력 <strong id="audit-cnt-empty">0</strong>개</span>
+      </div>
+
+      <!-- 실사 테이블 -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="th-left" style="width:200px">모델명</th>
+              <th style="width:90px;color:var(--blue)">장부재고</th>
+              <th style="width:130px;color:var(--amber);font-weight:700">실사수량 입력</th>
+              <th style="width:90px">차이</th>
+              <th style="width:110px">조정구분</th>
+              <th style="width:180px;color:var(--gray-500)">비고</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -2902,7 +2942,7 @@ window.saveForecast = async function(model) {
 var _stockView = 'current';
 window.switchStockView = function(view) {
   _stockView = view;
-  ['current','ym','forecast','safety'].forEach(function(v) {
+  ['current','ym','forecast','safety','audit'].forEach(function(v) {
     var el = document.getElementById('stock-view-' + v);
     if(el) el.style.display = v === view ? '' : 'none';
     var btn = document.getElementById('stock-view-btn-' + v);
@@ -2920,6 +2960,327 @@ window.switchStockView = function(view) {
   else if(view === 'ym')       { renderMonthlyYm(); }
   else if(view === 'forecast') { renderForecast(); }
   else if(view === 'safety')   { calcSafetyStock(); }
+  else if(view === 'audit')    { initAudit(); }
+};
+
+// ── 재고실사 ──
+var _auditData = {}; // { model: { bookQty, auditQty, note } }
+var AUDIT_DRAFT_KEY = 'audit_draft';
+
+function getCurrentStock() {
+  // 전체 입출고 기준 현재고 계산
+  var stockMap = {};
+  (appData.records||[]).forEach(function(r) {
+    var m = r.model || '';
+    if(!stockMap[m]) stockMap[m] = 0;
+    var q = r.qty || 0;
+    if(r.type === '입고' || r.type === '조정입고') stockMap[m] += q;
+    else if(r.type === '출고' || r.type === '조정출고') stockMap[m] -= q;
+  });
+  return stockMap;
+}
+
+function checkAuditDraftBar() {
+  var bar = document.getElementById('audit-draft-bar');
+  if(!bar) return;
+  // Firebase에서 임시저장 확인
+  if(!window._fbDb) { bar.style.display = 'none'; return; }
+  import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(function(m) {
+    m.get(m.ref(window._fbDb, 'audit_draft')).then(function(snap) {
+      if(!snap.exists()) { bar.style.display = 'none'; return; }
+      var draft = snap.val();
+      bar.style.display = 'flex';
+      var timeEl = document.getElementById('audit-draft-time');
+      if(timeEl && draft.savedAt) {
+        var d = new Date(draft.savedAt);
+        timeEl.textContent = '(' + d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0')
+          + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ' 저장)';
+      }
+    }).catch(function(){ bar.style.display = 'none'; });
+  });
+}
+
+function initAudit() {
+  var today = new Date();
+  var yy = today.getFullYear();
+  var mm = String(today.getMonth()+1).padStart(2,'0');
+  var dd = String(today.getDate()).padStart(2,'0');
+  var yEl = document.getElementById('audit-date-y');
+  var mEl = document.getElementById('audit-date-m');
+  var dEl = document.getElementById('audit-date-d');
+  if(yEl && !yEl.value) yEl.value = yy;
+  if(mEl && !mEl.value) mEl.value = mm;
+  if(dEl && !dEl.value) dEl.value = dd;
+
+  var stockMap = getCurrentStock();
+  Object.keys(stockMap).sort(function(a,b){ return a.localeCompare(b,'ko'); }).forEach(function(model) {
+    if(!_auditData[model]) {
+      _auditData[model] = { bookQty: stockMap[model], auditQty: '', note: '' };
+    } else {
+      _auditData[model].bookQty = stockMap[model];
+    }
+  });
+
+  checkAuditDraftBar();
+  renderAudit();
+}
+
+window.saveAuditDraft = async function() {
+  var yv = (document.getElementById('audit-date-y')||{}).value||'';
+  var mv = (document.getElementById('audit-date-m')||{}).value||'';
+  var dv = (document.getElementById('audit-date-d')||{}).value||'';
+  var draft = { savedAt: Date.now(), auditDate: yv+'-'+mv.padStart(2,'0')+'-'+dv.padStart(2,'0'), data: {} };
+  Object.keys(_auditData).forEach(function(model) {
+    var x = _auditData[model];
+    if(x.auditQty !== '') draft.data[model] = { auditQty: x.auditQty, note: x.note||'' };
+  });
+  var count = Object.keys(draft.data).length;
+  if(count === 0) { alert('입력된 실사수량이 없습니다.'); return; }
+
+  showLoading(true);
+  try {
+    if(window._fbDb) {
+      var m = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+      await m.set(m.ref(window._fbDb, 'audit_draft'), draft);
+    }
+    checkAuditDraftBar();
+    alert('💾 임시저장 완료!\n' + count + '개 모델이 저장됐습니다.\n어느 기기에서든 불러올 수 있습니다.');
+  } catch(e) {
+    alert('저장 실패: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+};
+
+window.loadAuditDraft = async function() {
+  showLoading(true);
+  try {
+    var m = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    var snap = await m.get(m.ref(window._fbDb, 'audit_draft'));
+    if(!snap.exists()) { alert('저장된 임시데이터가 없습니다.'); return; }
+    var draft = snap.val();
+    if(draft.auditDate) {
+      var parts = draft.auditDate.split('-');
+      if(parts.length === 3) {
+        var yEl = document.getElementById('audit-date-y');
+        var mEl = document.getElementById('audit-date-m');
+        var dEl = document.getElementById('audit-date-d');
+        if(yEl) yEl.value = parts[0];
+        if(mEl) mEl.value = parts[1];
+        if(dEl) dEl.value = parts[2];
+      }
+    }
+    var count = 0;
+    Object.keys(draft.data||{}).forEach(function(model) {
+      if(_auditData[model]) {
+        _auditData[model].auditQty = draft.data[model].auditQty;
+        _auditData[model].note     = draft.data[model].note || '';
+        count++;
+      }
+    });
+    renderAudit();
+    alert('✅ ' + count + '개 모델 데이터를 불러왔습니다.');
+  } catch(e) {
+    alert('불러오기 실패: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+};
+
+window.clearAuditDraft = async function() {
+  if(!confirm('임시저장된 데이터를 삭제하시겠습니까?')) return;
+  try {
+    if(window._fbDb) {
+      var m = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+      await m.remove(m.ref(window._fbDb, 'audit_draft'));
+    }
+    checkAuditDraftBar();
+  } catch(e) {
+    alert('삭제 실패: ' + e.message);
+  }
+};
+
+window.renderAudit = function() {
+  var tb   = document.getElementById('audit-tbody');
+  if(!tb) return;
+  var srch = (document.getElementById('audit-search')||{}).value||'';
+  var stockMap = getCurrentStock();
+
+  // 최신 장부재고 반영
+  Object.keys(stockMap).forEach(function(model) {
+    if(!_auditData[model]) _auditData[model] = { bookQty: stockMap[model], auditQty: '', note: '' };
+    else _auditData[model].bookQty = stockMap[model];
+  });
+
+  var models = Object.keys(_auditData).sort(function(a,b){ return a.localeCompare(b,'ko'); });
+  if(srch) models = models.filter(function(m){ return m.toLowerCase().indexOf(srch.toLowerCase()) >= 0; });
+
+  var total=0, plus=0, minus=0, match=0, empty=0;
+  var html = '';
+
+  models.forEach(function(model) {
+    var x = _auditData[model];
+    var bookQty  = x.bookQty || 0;
+    var auditQty = x.auditQty === '' ? '' : parseInt(x.auditQty);
+    var diff = auditQty === '' ? null : auditQty - bookQty;
+    total++;
+
+    var diffText = '', diffStyle = '', adjText = '', rowStyle = '';
+    if(diff === null) {
+      diffText = '-'; diffStyle = 'color:var(--gray-300)'; adjText = ''; empty++;
+    } else if(diff === 0) {
+      diffText = '일치'; diffStyle = 'color:var(--green);font-weight:600'; adjText = '-'; match++;
+      rowStyle = 'background:#F0FDF4';
+    } else if(diff > 0) {
+      diffText = '+' + diff.toLocaleString(); diffStyle = 'color:var(--red);font-weight:700';
+      adjText = '<span style="background:#FEE2E2;color:var(--red);padding:2px 8px;border-radius:4px;font-size:11px">조정입고</span>';
+      rowStyle = 'background:#FFF5F5'; plus++;
+    } else {
+      diffText = diff.toLocaleString(); diffStyle = 'color:var(--blue);font-weight:700';
+      adjText = '<span style="background:#DBEAFE;color:var(--blue);padding:2px 8px;border-radius:4px;font-size:11px">조정출고</span>';
+      rowStyle = 'background:#F0F7FF'; minus++;
+    }
+
+    html += '<tr style="' + rowStyle + ';border-bottom:1px solid var(--gray-100)">'
+      + '<td class="td-left" style="font-weight:500">' + model + '</td>'
+      + '<td style="text-align:right;font-weight:600;color:var(--blue)">' + bookQty.toLocaleString() + '</td>'
+      + '<td style="padding:4px 8px">'
+        + '<input type="number" min="0"'
+        + ' value="' + (auditQty === '' ? '' : auditQty) + '"'
+        + ' data-model="' + model.replace(/"/g,'&quot;') + '"'
+        + ' oninput="onAuditInput(this)"'
+        + ' style="width:100%;padding:5px 8px;border:2px solid ' + (diff !== null && diff !== 0 ? 'var(--amber)' : 'var(--gray-200)') + ';border-radius:6px;font-size:13px;text-align:right;font-weight:600">'
+      + '</td>'
+      + '<td style="text-align:center;' + diffStyle + '">' + diffText + '</td>'
+      + '<td style="text-align:center">' + adjText + '</td>'
+      + '<td style="padding:4px 8px">'
+        + '<input type="text" placeholder="비고" value="' + (x.note||'') + '"'
+        + ' data-model="' + model.replace(/"/g,'&quot;') + '"'
+        + ' oninput="onAuditNote(this)"'
+        + ' style="width:100%;padding:4px 8px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px">'
+      + '</td>'
+      + '</tr>';
+  });
+
+  tb.innerHTML = html || '<tr><td colspan="6" class="empty">모델 데이터가 없습니다.</td></tr>';
+
+  // 요약 업데이트
+  var s = document.getElementById('audit-summary');
+  if(s) s.style.display = 'flex';
+  var el = function(id){ return document.getElementById(id); };
+  if(el('audit-cnt-total'))  el('audit-cnt-total').textContent  = total;
+  if(el('audit-cnt-plus'))   el('audit-cnt-plus').textContent   = plus;
+  if(el('audit-cnt-minus'))  el('audit-cnt-minus').textContent  = minus;
+  if(el('audit-cnt-match'))  el('audit-cnt-match').textContent  = match;
+  if(el('audit-cnt-empty'))  el('audit-cnt-empty').textContent  = empty;
+};
+
+window.onAuditInput = function(el) {
+  var model = el.getAttribute('data-model');
+  if(_auditData[model]) _auditData[model].auditQty = el.value === '' ? '' : parseInt(el.value)||0;
+  renderAudit();
+  // 포커스 유지
+  setTimeout(function() {
+    var inputs = document.querySelectorAll('#audit-tbody input[type="number"]');
+    inputs.forEach(function(inp) {
+      if(inp.getAttribute('data-model') === model) inp.focus();
+    });
+  }, 10);
+};
+
+window.onAuditNote = function(el) {
+  var model = el.getAttribute('data-model');
+  if(_auditData[model]) _auditData[model].note = el.value;
+};
+
+window.auditFillFromStock = function() {
+  var stockMap = getCurrentStock();
+  Object.keys(_auditData).forEach(function(model) {
+    _auditData[model].auditQty = stockMap[model] || 0;
+  });
+  renderAudit();
+};
+
+window.auditClearAll = function() {
+  Object.keys(_auditData).forEach(function(model) {
+    _auditData[model].auditQty = '';
+  });
+  renderAudit();
+};
+
+window.confirmAudit = async function() {
+  var yv = (document.getElementById('audit-date-y')||{}).value||'';
+  var mv = (document.getElementById('audit-date-m')||{}).value||'';
+  var dv = (document.getElementById('audit-date-d')||{}).value||'';
+  var auditDate = yv && mv && dv ? yv+'-'+mv.padStart(2,'0')+'-'+dv.padStart(2,'0') : '';
+  if(!auditDate) { alert('실사일자를 입력해주세요.'); return; }
+
+  var adjustments = [];
+  Object.keys(_auditData).forEach(function(model) {
+    var x = _auditData[model];
+    if(x.auditQty === '' || x.auditQty === null) return;
+    var diff = parseInt(x.auditQty) - (x.bookQty||0);
+    if(diff === 0) return;
+    adjustments.push({
+      model: model,
+      diff: diff,
+      type: diff > 0 ? '조정입고' : '조정출고',
+      qty: Math.abs(diff),
+      note: x.note || '재고실사 조정 (' + auditDate + ')'
+    });
+  });
+
+  if(!adjustments.length) { alert('조정이 필요한 항목이 없습니다.\n(미입력이거나 모두 일치)'); return; }
+
+  var msg = '📋 실사 확정 내역 (' + auditDate + ')\n\n';
+  adjustments.forEach(function(a) {
+    msg += (a.diff > 0 ? '▲ ' : '▼ ') + a.model + ': ' + a.type + ' ' + a.qty.toLocaleString() + '개\n';
+  });
+  msg += '\n총 ' + adjustments.length + '건 조정 처리하시겠습니까?';
+  if(!confirm(msg)) return;
+
+  showLoading(true);
+  try {
+    for(var i=0; i<adjustments.length; i++) {
+      var a = adjustments[i];
+      var newRecord = {
+        date: auditDate,
+        type: a.type,
+        model: a.model,
+        qty: a.qty,
+        partner: '재고실사',
+        category: '실사조정',
+        location: '',
+        writer: '',
+        serial: '',
+        memo: a.note,
+        id: Date.now() + i
+      };
+      appData.records.push(newRecord);
+      if(typeof fbSaveRecord === 'function') {
+        await fbSaveRecord(newRecord);
+      }
+    }
+    saveLocal();
+    renderHistory();
+    updateDashboard();
+
+    // 실사 데이터 초기화 + Firebase draft 삭제
+    _auditData = {};
+    if(window._fbDb) {
+      var fm = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+      await fm.remove(fm.ref(window._fbDb, 'audit_draft'));
+    }
+    checkAuditDraftBar();
+    initAudit();
+
+    alert('✅ 재고실사 완료!\n' + adjustments.length + '건 조정 처리됐습니다.\n입출고내역에서 확인하세요.');
+    switchStockView('current');
+  } catch(e) {
+    alert('저장 중 오류: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
 };
 
 // ── 안전재고 산출 ──
@@ -4678,58 +5039,6 @@ document.getElementById('fb-apikey').value    = FIREBASE_API_KEY;
 document.getElementById('fb-dburl').value     = FIREBASE_DB_URL;
 document.getElementById('fb-projectid').value = FIREBASE_PROJECT_ID;
 connectFirebase();
-
-// ── PIN 잠금 ──
-(function() {
-  const PIN = 'hitec2026';          // ← 비밀번호 여기서 변경
-  const MAX_TRIES = 3;
-  const LOCK_MINUTES = 10;
-  const SESSION_KEY = 'pin_auth';
-  const LOCK_KEY    = 'pin_lock_until';
-
-  // 이미 인증된 세션이면 바로 해제
-  if(sessionStorage.getItem(SESSION_KEY) === 'ok') {
-    document.getElementById('pin-lock').style.display = 'none';
-    return;
-  }
-
-  window.checkPin = function() {
-    const lockUntil = parseInt(localStorage.getItem(LOCK_KEY) || '0');
-    const now = Date.now();
-
-    if(now < lockUntil) {
-      const remain = Math.ceil((lockUntil - now) / 60000);
-      document.getElementById('pin-error').textContent = '⛔ 잠금 상태입니다. ' + remain + '분 후 다시 시도하세요.';
-      document.getElementById('pin-input').value = '';
-      return;
-    }
-
-    const input = document.getElementById('pin-input').value;
-    const tries = parseInt(sessionStorage.getItem('pin_tries') || '0');
-
-    if(input === PIN) {
-      sessionStorage.setItem(SESSION_KEY, 'ok');
-      sessionStorage.removeItem('pin_tries');
-      document.getElementById('pin-lock').style.display = 'none';
-    } else {
-      const newTries = tries + 1;
-      sessionStorage.setItem('pin_tries', newTries);
-      document.getElementById('pin-input').value = '';
-
-      if(newTries >= MAX_TRIES) {
-        localStorage.setItem(LOCK_KEY, now + LOCK_MINUTES * 60 * 1000);
-        sessionStorage.removeItem('pin_tries');
-        document.getElementById('pin-error').textContent = '⛔ ' + MAX_TRIES + '회 오류. ' + LOCK_MINUTES + '분간 잠금됩니다.';
-      } else {
-        document.getElementById('pin-error').textContent = '❌ 비밀번호가 틀렸습니다. (' + newTries + '/' + MAX_TRIES + ')';
-      }
-      // 입력란 흔들기 효과
-      var inp = document.getElementById('pin-input');
-      inp.style.borderColor = '#ef4444';
-      setTimeout(function(){ inp.style.borderColor = '#e5e7eb'; }, 600);
-    }
-  };
-})();
 
 // ── 입출고 수정 모달 ──
 var _editTarget = null;
