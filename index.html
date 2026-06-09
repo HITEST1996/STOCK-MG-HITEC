@@ -1757,8 +1757,7 @@ window.clearForm = function() {
   document.getElementById('f-model-search').value='';
   document.getElementById('f-model-dropdown').style.display='none';
   ['f-serial','f-qty','f-category','f-partner','f-location','f-writer','f-memo','f-unitprice'].forEach(id=>document.getElementById(id).value='');
-  const kstNow = new Date(Date.now() + 9*60*60*1000);
-  document.getElementById('f-date').value=kstNow.toISOString().slice(0,10);
+  document.getElementById('f-date').value = kstToday().str;
 };
 
 // ── HISTORY ──
@@ -1810,16 +1809,16 @@ function getFilteredRecords() {
       // ADJ 건은 날짜 내림차순 시 맨 위로
       const aIsAdj = String(a.id).startsWith('ADJ');
       const bIsAdj = String(b.id).startsWith('ADJ');
-      if(aIsAdj && !bIsAdj) return sortDir;   // ADJ 맨 아래
-      if(!aIsAdj && bIsAdj) return -sortDir;
-      if(aIsAdj && bIsAdj) return b.id > a.id ? sortDir : -sortDir;
+      if(aIsAdj && !bIsAdj) return 1;   // ADJ 무조건 맨 아래
+      if(!aIsAdj && bIsAdj) return -1;
+      if(aIsAdj && bIsAdj) return b.id > a.id ? 1 : -1;
       va=idxMap.get(a.id)||(aIsAdj?999999:a.id);
       vb=idxMap.get(b.id)||(bIsAdj?999999:b.id);
     } else if(sortKey==='date') {
       const aIsAdj = String(a.id).startsWith('ADJ');
       const bIsAdj = String(b.id).startsWith('ADJ');
-      if(aIsAdj && !bIsAdj) return sortDir;   // ADJ 맨 아래
-      if(!aIsAdj && bIsAdj) return -sortDir;
+      if(aIsAdj && !bIsAdj) return 1;   // ADJ 무조건 맨 아래
+      if(!aIsAdj && bIsAdj) return -1;
       const dateCmp = koCompare(a.date,b.date)*sortDir;
       if(dateCmp !== 0) return dateCmp;
       return 0;
@@ -2321,7 +2320,7 @@ window.exportProdExcel = function() {
   }
 
   XLSX.utils.book_append_sheet(wb, ws, '생산협조전');
-  var today = new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);
+  var today = kstToday().str;
   XLSX.writeFile(wb, '생산협조전_' + today + '.xlsx');
 };
 
@@ -2348,10 +2347,10 @@ window.exportHistExcel = function() {
   ws['!cols'] = [{wch:6},{wch:11},{wch:22},{wch:30},{wch:7},{wch:7},{wch:8},{wch:16},{wch:10},{wch:10},{wch:20}];
   try { xlsStyle(ws); } catch(e) {}
   XLSX.utils.book_append_sheet(wb, ws, '입출고내역');
-  XLSX.writeFile(wb, '입출고내역_' + new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10) + '.xlsx');
+  XLSX.writeFile(wb, '입출고내역_' + kstToday().str + '.xlsx');
 };
 window.exportStockExcel = function() {
-  const kst = new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);
+  const kst = kstToday().str;
   const wb  = XLSX.utils.book_new();
   const groupOrder = ['단말기','디지털 수도미터','일체형 수도미터','초음파 수도미터','수집기','중계기','휴대중계기','배터리','전자지시부'];
 
@@ -2758,7 +2757,7 @@ window.exportOutletExcel = function() {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '출고처별현황');
-  XLSX.writeFile(wb, '출고처별현황_' + new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10) + '.xlsx');
+  XLSX.writeFile(wb, '출고처별현황_' + kstToday().str + '.xlsx');
 };
 
 // ── MONTHLY ──
@@ -3155,7 +3154,21 @@ window.exportSublExcel = function() {
   XLSX.writeFile(wb, title+'.xlsx');
 };
 
-// ── 재고실사 ──
+// ── KST 날짜 헬퍼 ──
+function kstToday() {
+  // 브라우저 로컬 시간이 KST(UTC+9)인 경우 그대로 사용
+  // 다른 타임존 환경에서도 KST 기준으로 반환
+  var now = new Date();
+  var kst = new Date(now.getTime() + (9*60 - now.getTimezoneOffset()) * 60000);
+  return {
+    year:  kst.getUTCFullYear(),
+    month: kst.getUTCMonth() + 1,
+    date:  kst.getUTCDate(),
+    str:   kst.getUTCFullYear() + '-'
+           + String(kst.getUTCMonth()+1).padStart(2,'0') + '-'
+           + String(kst.getUTCDate()).padStart(2,'0')
+  };
+}
 var _auditData = {}; // { model: { bookQty, auditQty, note } }
 var AUDIT_DRAFT_KEY = 'audit_draft';
 
@@ -3193,10 +3206,10 @@ function checkAuditDraftBar() {
 }
 
 function initAudit() {
-  var today = new Date();
-  var yy = today.getFullYear();
-  var mm = String(today.getMonth()+1).padStart(2,'0');
-  var dd = String(today.getDate()).padStart(2,'0');
+  var kst = kstToday();
+  var yy = kst.year;
+  var mm = String(kst.month).padStart(2,'0');
+  var dd = String(kst.date).padStart(2,'0');
   var yEl = document.getElementById('audit-date-y');
   var mEl = document.getElementById('audit-date-m');
   var dEl = document.getElementById('audit-date-d');
@@ -3483,10 +3496,10 @@ window.confirmAudit = async function() {
 
   showLoading(true);
   try {
+    var adjBase = kstToday();
+    var mmdd = String(adjBase.month).padStart(2,'0') + String(adjBase.date).padStart(2,'0');
     for(var i=0; i<adjustments.length; i++) {
       var a = adjustments[i];
-      var kstNow = new Date(Date.now()+9*60*60*1000);
-      var mmdd = String(kstNow.getMonth()+1).padStart(2,'0') + String(kstNow.getDate()).padStart(2,'0');
       var newRecord = {
         id: 'ADJ-' + mmdd + '-' + String(i+1).padStart(2,'0'),
         date: auditDate,
@@ -3841,7 +3854,7 @@ window.exportSerialExcel=function(){
   ws['!cols']=[{wch:18},{wch:22},{wch:12},{wch:8},{wch:12},{wch:16},{wch:10},{wch:10},{wch:20}];
   try { xlsStyle(ws); } catch(e) {}
   XLSX.utils.book_append_sheet(wb,ws,'장비일련번호');
-  XLSX.writeFile(wb,'장비일련번호_'+new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb,'장비일련번호_'+kstToday().str+'.xlsx');
 };
 function getSerialRows(){
   const catMap={};
@@ -4177,7 +4190,8 @@ window.sidebarNav = function(tabName) {
 appData.logs = appData.logs || [];
 
 async function addLog(action, record, extra) {
-  const kstNow = new Date(Date.now() + 9*60*60*1000);
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + (9*60 - now.getTimezoneOffset())*60000);
   const log = {
     ts:     kstNow.toISOString().slice(0,19).replace('T',' '),
     action: action,
@@ -4236,7 +4250,8 @@ window.resetLogFilter = function() {
 
 window.clearOldLogs = async function() {
   if(!confirm('30일 이전 이력을 삭제하시겠습니까?')) return;
-  const cutoff = new Date(Date.now() + 9*60*60*1000 - 30*24*60*60*1000).toISOString().slice(0,19).replace('T',' ');
+  const cutoffBase = new Date();
+  const cutoff = new Date(cutoffBase.getTime() + (9*60 - cutoffBase.getTimezoneOffset())*60000 - 30*24*60*60*1000).toISOString().slice(0,19).replace('T',' ');
   if(window._isFirebase) {
     const old = (appData.logs||[]).filter(l => l.ts < cutoff && l._key);
     if(!old.length) { alert('삭제할 이력이 없습니다.'); return; }
@@ -5270,7 +5285,7 @@ function setupMonthGroup(prefix, onComplete) {
   });
 }
 // ── INIT ──
-document.getElementById('f-date').value=new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);
+document.getElementById('f-date').value=kstToday().str;
 initMonthlyQuick();
 
 // ★ Firebase 설정값 직접 내장 (팀 공유 시 자동 연결)
