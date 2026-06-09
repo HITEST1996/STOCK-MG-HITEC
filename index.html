@@ -735,8 +735,9 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
           </span>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <input type="text" id="subl-search" placeholder="모델명 검색"
-            style="padding:5px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;width:160px">
+          <input type="text" id="subl-search" placeholder="모델명/대분류 검색"
+            style="padding:5px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;width:170px"
+            oninput="renderSubl()">
         </div>
         <button class="btn btn-ghost" onclick="renderSubl()" style="font-size:12px">조회</button>
         <button class="btn btn-ghost" onclick="exportSublExcel()" style="font-size:12px">엑셀 다운로드</button>
@@ -3021,105 +3022,29 @@ window.switchStockView = function(view) {
 
 // ── 수불부 ──
 window.renderSubl = function() {
-  var tb   = document.getElementById('subl-tbody');
-  var cnt  = document.getElementById('subl-count');
+  var tb  = document.getElementById('subl-tbody');
+  var cnt = document.getElementById('subl-count');
   if(!tb) return;
 
   var from = getDateVal('subl-from');
   var to   = getDateVal('subl-to');
-  var srch = (document.getElementById('subl-search')||{}).value||'';
+  var srch = ((document.getElementById('subl-search')||{}).value||'').toLowerCase();
 
-  // 모델 목록 (마스터 기준)
-  var models = (appData.masters||[]).map(function(m){ return m.model; });
-  // 마스터에 없는 모델도 포함
-  appData.records.forEach(function(r) {
-    if(r.model && models.indexOf(r.model) === -1) models.push(r.model);
-  });
-  models.sort(function(a,b){ return a.localeCompare(b,'ko'); });
-
-  if(srch) models = models.filter(function(m){ return m.toLowerCase().indexOf(srch.toLowerCase()) >= 0; });
-
-  var html = '';
-  var totalIn=0, totalOut=0, totalAdj=0;
-  var validCount = 0;
-
-  models.forEach(function(model) {
-    // 기초재고: from 이전까지 누적
-    var base = 0;
-    appData.records.forEach(function(r) {
-      if(r.model !== model) return;
-      if(from && r.date >= from) return; // from 이전만
-      if(r.type==='입고'||r.type==='조정입고') base += (r.qty||0);
-      else if(r.type==='출고'||r.type==='조정출고') base -= (r.qty||0);
-    });
-
-    // 기간 내 입고/출고/조정
-    var inQty=0, outQty=0, adjQty=0;
-    appData.records.forEach(function(r) {
-      if(r.model !== model) return;
-      if(from && r.date < from) return;
-      if(to   && r.date > to)   return;
-      if(r.type==='입고')       inQty  += (r.qty||0);
-      else if(r.type==='출고')  outQty += (r.qty||0);
-      else if(r.type==='조정입고')  adjQty += (r.qty||0);
-      else if(r.type==='조정출고')  adjQty -= (r.qty||0);
-    });
-
-    var closing = base + inQty - outQty + adjQty;
-
-    // 기간 내 거래가 전혀 없고 기초/기말도 0이면 표시 안 함
-    if(!base && !inQty && !outQty && !adjQty) return;
-
-    validCount++;
-    totalIn  += inQty;
-    totalOut += outQty;
-    totalAdj += adjQty;
-
-    var closingColor = closing < 0 ? 'color:var(--red);font-weight:700' : 'font-weight:700;color:var(--blue)';
-    var adjText = adjQty === 0 ? '-' : (adjQty > 0 ? '+'+adjQty.toLocaleString() : adjQty.toLocaleString());
-    var adjColor = adjQty > 0 ? 'color:var(--green)' : adjQty < 0 ? 'color:var(--red)' : 'color:var(--gray-300)';
-
-    html += '<tr>'
-      + '<td class="td-left" style="font-weight:500">' + model + '</td>'
-      + '<td style="text-align:right">' + base.toLocaleString() + '</td>'
-      + '<td style="text-align:right;color:var(--green)">' + (inQty ? inQty.toLocaleString() : '-') + '</td>'
-      + '<td style="text-align:right;color:var(--red)">'   + (outQty ? outQty.toLocaleString() : '-') + '</td>'
-      + '<td style="text-align:right;' + adjColor + '">' + adjText + '</td>'
-      + '<td style="text-align:right;' + closingColor + '">' + closing.toLocaleString() + '</td>'
-      + '</tr>';
-  });
-
-  // 합계 행
-  if(validCount > 0) {
-    html += '<tr style="background:var(--gray-50);font-weight:700;border-top:2px solid var(--gray-200)">'
-      + '<td class="td-left">합계</td>'
-      + '<td></td>'
-      + '<td style="text-align:right;color:var(--green)">' + totalIn.toLocaleString() + '</td>'
-      + '<td style="text-align:right;color:var(--red)">'   + totalOut.toLocaleString() + '</td>'
-      + '<td style="text-align:right">' + (totalAdj===0?'-':(totalAdj>0?'+':'')+totalAdj.toLocaleString()) + '</td>'
-      + '<td></td>'
-      + '</tr>';
-  }
-
-  tb.innerHTML = html || '<tr><td colspan="6" class="empty">조회된 데이터가 없습니다.</td></tr>';
-  if(cnt) cnt.textContent = validCount + '개 모델';
-};
-
-window.exportSublExcel = function() {
-  renderSubl(); // 최신 상태 보장
-  var from = getDateVal('subl-from');
-  var to   = getDateVal('subl-to');
-  var title = '수불부' + (from ? '_' + from : '') + (to ? '~' + to : '');
-
-  var wb = XLSX.utils.book_new();
-  var wsData = [['모델명','기초재고','입고','출고','조정','기말재고']];
-
+  // 모델 목록
   var models = (appData.masters||[]).map(function(m){ return m.model; });
   appData.records.forEach(function(r) {
     if(r.model && models.indexOf(r.model)===-1) models.push(r.model);
   });
   models.sort(function(a,b){ return a.localeCompare(b,'ko'); });
 
+  // 검색 필터 (모델명 또는 대분류)
+  if(srch) models = models.filter(function(m) {
+    return m.toLowerCase().indexOf(srch) >= 0 || getModelGroup(m).toLowerCase().indexOf(srch) >= 0;
+  });
+
+  // 대분류별 그룹핑
+  var groupMap = {};
+  var groupOrder = [];
   models.forEach(function(model) {
     var base=0;
     appData.records.forEach(function(r) {
@@ -3128,24 +3053,106 @@ window.exportSublExcel = function() {
       if(r.type==='입고'||r.type==='조정입고') base+=(r.qty||0);
       else if(r.type==='출고'||r.type==='조정출고') base-=(r.qty||0);
     });
-    var inQty=0,outQty=0,adjQty=0;
+    var inQty=0, outQty=0, adjQty=0;
     appData.records.forEach(function(r) {
       if(r.model!==model) return;
       if(from && r.date<from) return;
       if(to   && r.date>to)   return;
+      if(r.type==='입고')          inQty  +=(r.qty||0);
+      else if(r.type==='출고')     outQty +=(r.qty||0);
+      else if(r.type==='조정입고') adjQty +=(r.qty||0);
+      else if(r.type==='조정출고') adjQty -=(r.qty||0);
+    });
+    if(!base&&!inQty&&!outQty&&!adjQty) return;
+
+    var grp = getModelGroup(model);
+    if(!groupMap[grp]) { groupMap[grp]=[]; groupOrder.push(grp); }
+    groupMap[grp].push({ model, base, inQty, outQty, adjQty, closing: base+inQty-outQty+adjQty });
+  });
+
+  var html = '';
+  var totalModels = 0;
+
+  groupOrder.forEach(function(grp) {
+    var items = groupMap[grp];
+    // 그룹 합계
+    var gBase=0, gIn=0, gOut=0, gAdj=0, gClose=0;
+    items.forEach(function(x){ gBase+=x.base; gIn+=x.inQty; gOut+=x.outQty; gAdj+=x.adjQty; gClose+=x.closing; });
+
+    // 그룹 헤더
+    html += '<tr style="background:linear-gradient(90deg,#DFF0FA,#EBF4FB);border-top:2px solid #90CBE8">'
+      + '<td colspan="6" style="padding:7px 12px;font-weight:700;color:#005A8A;font-size:13px;text-align:left">'
+      + '▸ ' + grp + ' &nbsp;<span style="font-size:11px;font-weight:400;color:var(--gray-500)">' + items.length + '개 모델</span>'
+      + '&nbsp;&nbsp;<span style="font-size:11px;color:var(--gray-400)">기말재고 합계: <b style="color:var(--blue)">' + gClose.toLocaleString() + '</b></span>'
+      + '</td></tr>';
+
+    items.forEach(function(x) {
+      totalModels++;
+      var adjText = x.adjQty===0 ? '-' : (x.adjQty>0?'+':'')+x.adjQty.toLocaleString();
+      var adjColor = x.adjQty>0?'color:var(--green)':x.adjQty<0?'color:var(--red)':'color:var(--gray-300)';
+      var closingColor = x.closing<0 ? 'color:var(--red);font-weight:700' : 'font-weight:700;color:var(--blue-dark)';
+      html += '<tr style="border-bottom:1px solid var(--gray-100)">'
+        + '<td class="td-left" style="padding-left:24px;font-weight:500">' + x.model + '</td>'
+        + '<td style="text-align:right;color:var(--gray-600)">' + x.base.toLocaleString() + '</td>'
+        + '<td style="text-align:right;color:var(--green)">'  + (x.inQty  ? x.inQty.toLocaleString()  : '-') + '</td>'
+        + '<td style="text-align:right;color:var(--red)">'   + (x.outQty ? x.outQty.toLocaleString() : '-') + '</td>'
+        + '<td style="text-align:right;' + adjColor + '">'   + adjText + '</td>'
+        + '<td style="text-align:right;' + closingColor + '">' + x.closing.toLocaleString() + '</td>'
+        + '</tr>';
+    });
+  });
+
+  tb.innerHTML = html || '<tr><td colspan="6" class="empty">조회된 데이터가 없습니다.</td></tr>';
+  if(cnt) cnt.textContent = groupOrder.length + '개 대분류 / ' + totalModels + '개 모델';
+};
+
+window.exportSublExcel = function() {
+  var from = getDateVal('subl-from');
+  var to   = getDateVal('subl-to');
+  var srch = ((document.getElementById('subl-search')||{}).value||'').toLowerCase();
+  var title = '수불부' + (from?'_'+from:'') + (to?'~'+to:'');
+
+  var models = (appData.masters||[]).map(function(m){ return m.model; });
+  appData.records.forEach(function(r){ if(r.model && models.indexOf(r.model)===-1) models.push(r.model); });
+  models.sort(function(a,b){ return a.localeCompare(b,'ko'); });
+  if(srch) models = models.filter(function(m){ return m.toLowerCase().indexOf(srch)>=0 || getModelGroup(m).toLowerCase().indexOf(srch)>=0; });
+
+  var wb = XLSX.utils.book_new();
+  var wsData = [['대분류','모델명','기초재고','입고','출고','조정','기말재고']];
+
+  var groupMap={}, groupOrder=[];
+  models.forEach(function(model) {
+    var base=0;
+    appData.records.forEach(function(r){
+      if(r.model!==model||( from && r.date>=from)) return;
+      if(r.type==='입고'||r.type==='조정입고') base+=(r.qty||0);
+      else if(r.type==='출고'||r.type==='조정출고') base-=(r.qty||0);
+    });
+    var inQty=0,outQty=0,adjQty=0;
+    appData.records.forEach(function(r){
+      if(r.model!==model) return;
+      if(from&&r.date<from) return;
+      if(to&&r.date>to) return;
       if(r.type==='입고') inQty+=(r.qty||0);
       else if(r.type==='출고') outQty+=(r.qty||0);
       else if(r.type==='조정입고') adjQty+=(r.qty||0);
       else if(r.type==='조정출고') adjQty-=(r.qty||0);
     });
     if(!base&&!inQty&&!outQty&&!adjQty) return;
-    wsData.push([model, base, inQty, outQty, adjQty, base+inQty-outQty+adjQty]);
+    var grp=getModelGroup(model);
+    if(!groupMap[grp]){groupMap[grp]=[];groupOrder.push(grp);}
+    groupMap[grp].push([grp,model,base,inQty,outQty,adjQty,base+inQty-outQty+adjQty]);
+  });
+
+  groupOrder.forEach(function(grp){
+    wsData.push([grp,'','','','','','']); // 그룹 헤더
+    groupMap[grp].forEach(function(row){ wsData.push(row); });
   });
 
   var ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:24},{wch:12},{wch:12},{wch:12},{wch:10},{wch:12}];
+  ws['!cols'] = [{wch:16},{wch:24},{wch:12},{wch:12},{wch:12},{wch:10},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws, '수불부');
-  XLSX.writeFile(wb, title + '.xlsx');
+  XLSX.writeFile(wb, title+'.xlsx');
 };
 
 // ── 재고실사 ──
