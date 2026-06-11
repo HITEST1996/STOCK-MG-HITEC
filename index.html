@@ -1280,11 +1280,11 @@ function updateStats() {
   const masterSet=new Set(appData.masters.map(m=>m.model));
   const autoModels=[...new Set(appData.records.map(r=>r.model))].filter(m=>!masterSet.has(m));
   const totalModels=appData.masters.length+autoModels.length;
-  document.getElementById('stat-total-items').textContent=totalModels;
+  const el1=document.getElementById('stat-total-items'); if(el1) el1.textContent=totalModels;
   const tot=Object.values(s).reduce((a,b)=>a+(b>0?b:0),0);
-  document.getElementById('stat-total-stock').textContent=tot.toLocaleString();
+  const el2=document.getElementById('stat-total-stock'); if(el2) el2.textContent=tot.toLocaleString();
   const d=appData.masters.filter(m=>(s[m.model]||0)<m.safeQty).length;
-  document.getElementById('stat-tx-count').textContent=appData.records.length;
+  const el3=document.getElementById('stat-tx-count'); if(el3) el3.textContent=appData.records.length;
 
   // 재고 금액 계산
   const costEl = document.getElementById('stat-total-cost');
@@ -4975,24 +4975,8 @@ document.addEventListener('DOMContentLoaded', function() {
   setupDateGroup('forecast-to',   ()=>applyForecastFilter());
 });
 window.renderMonthlyQuick = function() {
-  // 날짜 input이 비어있으면 당월 직접 설정
-  var yFromEl = document.getElementById('mq-from-y');
-  if(yFromEl && !yFromEl.value) {
-    var now = new Date();
-    var y = String(now.getFullYear());
-    var mo = String(now.getMonth()+1).padStart(2,'0');
-    var lastD = String(new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()).padStart(2,'0');
-    document.getElementById('mq-from-y').value = y;
-    document.getElementById('mq-from-m').value = mo;
-    document.getElementById('mq-from-d').value = '01';
-    document.getElementById('mq-to-y').value = y;
-    document.getElementById('mq-to-m').value = mo;
-    document.getElementById('mq-to-d').value = lastD;
-    var lbl = document.getElementById('monthly-quick-label');
-    if(lbl) lbl.textContent = y + '년 ' + parseInt(mo) + '월';
-  }
-  var from = getDateVal('mq-from');
-  var to   = getDateVal('mq-to');
+  const from = getDateVal('mq-from');
+  const to   = getDateVal('mq-to');
   // 라벨 업데이트
   const label = document.getElementById('monthly-quick-label');
   if(label && from && to) {
