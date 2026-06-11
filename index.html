@@ -703,13 +703,12 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
             oninput="renderSubl()">
         </div>
         <button class="btn btn-ghost" onclick="renderSubl()" style="font-size:12px">조회</button>
-        <button class="btn btn-ghost" onclick="exportSublExcel()" style="font-size:12px">엑셀 다운로드</button>
         <button id="subl-base-btn" onclick="setBaseStock()" style="display:none;font-size:12px;padding:6px 14px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:6px;font-weight:600;cursor:pointer">📌 오늘 현재고로 기준재고 설정</button>
         <span id="subl-count" style="font-size:12px;color:var(--gray-500);margin-left:auto"></span>
       </div>
 
       <!-- 기준재고 상태 배너 -->
-      <div id="subl-base-bar" style="display:none;padding:8px 16px;border-radius:8px;margin-bottom:12px;font-size:12px;background:#EFF8FF;border:1px solid #BFDBFE;display:flex;align-items:center;gap:10px">
+      <div id="subl-base-bar" style="display:none;padding:8px 16px;border-radius:8px;margin-bottom:12px;font-size:12px;background:#EFF8FF;border:1px solid #BFDBFE;flex;align-items:center;gap:10px">
         <span style="color:var(--blue)">📌 기준재고 설정일: <strong id="subl-base-date"></strong></span>
         <span style="color:var(--gray-500)">이 날짜 이후 입출고만 반영됩니다.</span>
         <button onclick="clearBaseStock()" style="margin-left:auto;padding:2px 10px;background:#fff;color:var(--red);border:1px solid #fca5a5;border-radius:4px;font-size:11px;cursor:pointer">기준재고 초기화</button>
@@ -863,7 +862,6 @@ tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums}
             oninput="renderAudit()">
         </div>
         <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="auditFillFromStock()" style="font-size:12px">장부수량으로 채우기</button>
           <button class="btn btn-ghost" onclick="auditClearAll()" style="font-size:12px">전체 초기화</button>
           <button onclick="saveAuditDraft()" style="font-size:12px;padding:6px 14px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:6px;font-weight:600;cursor:pointer">임시저장</button>
           <button onclick="confirmAudit()" class="btn btn-ghost" style="font-size:12px;font-weight:600">실사 확정</button>
@@ -1264,6 +1262,7 @@ window.switchTab = function(name) {
   const idx = tabs.indexOf(name);
   if(idx >= 0) document.querySelectorAll('.tab')[idx].classList.add('active');
   _activeTab = name;
+  location.hash = name; // URL hash로 탭 저장
   switch(name) {
     case 'history':    renderHistory(); break;
     case 'stock':      switchStockView(_stockView || 'current'); break;
@@ -1271,7 +1270,6 @@ window.switchTab = function(name) {
     case 'master':     renderMaster(); break;
     case 'production': renderProduction(); break;
   }
-  // 탭 전환 후 해당 탭의 자동완성 초기화 (display:none 해제 후 실행)
   setTimeout(function() { initModelACsForTab(name); }, 10);
 };
 
@@ -2973,6 +2971,7 @@ window.saveForecast = async function(model) {
 var _stockView = 'current';
 window.switchStockView = function(view) {
   _stockView = view;
+  sessionStorage.setItem('stockView', view);
   ['current','subl','forecast','safety','audit'].forEach(function(v) {
     var el = document.getElementById('stock-view-' + v);
     if(el) el.style.display = v === view ? '' : 'none';
@@ -3009,6 +3008,7 @@ window.switchStockView = function(view) {
       if(baseBtn) {
         var visible = baseBtn.style.display !== 'none';
         baseBtn.style.display = visible ? 'none' : '';
+        updateBaseStockBar(); // 배너도 같이 토글
       }
     }
   });
@@ -3055,10 +3055,12 @@ window.clearBaseStock = async function() {
 };
 
 function updateBaseStockBar() {
-  var bar  = document.getElementById('subl-base-bar');
+  var bar    = document.getElementById('subl-base-bar');
   var dateEl = document.getElementById('subl-base-date');
+  var baseBtn = document.getElementById('subl-base-btn');
   if(!bar) return;
-  if(appData.baseStock && appData.baseStock.setDate) {
+  var secretVisible = baseBtn && baseBtn.style.display !== 'none';
+  if(appData.baseStock && appData.baseStock.setDate && secretVisible) {
     bar.style.display = 'flex';
     if(dateEl) dateEl.textContent = appData.baseStock.setDate;
   } else {
@@ -3123,7 +3125,9 @@ window.renderSubl = function() {
     });
 
     var closing = base + inQty - outQty;
-    if(!base && !inQty && !outQty) return;
+    // 마스터에 등록된 모델은 0이어도 표시, 아니면 거래있는 것만 표시
+    var inMaster = appData.masters.some(function(m){ return m.model === model; });
+    if(!inMaster && !base && !inQty && !outQty) return;
 
     var grp = getModelGroup(model);
     if(!groupMap[grp]) { groupMap[grp]=[]; groupOrder.push(grp); }
@@ -5195,6 +5199,16 @@ function renderAll() {
   populateModelSelects();
   renderMonthlyQuick();
   if(!window._macInited) { initModelACs(); window._macInited=true; }
+  // URL hash로 탭 복원 (1회만)
+  if(!window._tabRestored && window._fbLoaded && window._fbLoaded.records && window._fbLoaded.masters) {
+    window._tabRestored = true;
+    var hash = location.hash.replace('#','');
+    var valid = ['input','history','stock','serial','master','production'];
+    if(hash && valid.indexOf(hash) >= 0 && hash !== 'input') {
+      switchTab(hash);
+      return;
+    }
+  }
   switch(_activeTab) {
     case 'input':    break;
     case 'history':  renderHistory(); break;
